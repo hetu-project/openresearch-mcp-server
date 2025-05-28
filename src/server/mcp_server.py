@@ -2,7 +2,7 @@
 学术研究MCP服务器核心实现
 """
 import asyncio
-from typing import Any, Sequence, Dict, Callable
+from typing import Any, Optional, Sequence, Dict, Callable
 import structlog
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -27,8 +27,8 @@ class AcademicMCPServer:
     
     def __init__(self):
         self.server = Server(settings.server_name)
-        self.go_client: GoServiceClient = None
-        self.data_processor: DataProcessor = None
+        self.go_client: Optional[GoServiceClient] = None
+        self.data_processor: Optional[DataProcessor] = None
         self.tools: Dict[str, Callable] = {}
         self.tool_definitions: list[Tool] = []
         
@@ -37,8 +37,8 @@ class AcademicMCPServer:
     
     def _register_handlers(self):
         """注册MCP协议处理器"""
-        self.server.list_tools = self.list_tools
-        self.server.call_tool = self.call_tool
+        setattr(self.server, 'list_tools', self.list_tools)
+        setattr(self.server, 'call_tool', self.call_tool)
     
     async def initialize(self):
         """初始化服务器组件"""
@@ -73,6 +73,9 @@ class AcademicMCPServer:
     
     async def _initialize_tools(self):
         """初始化所有工具"""
+        assert self.go_client is not None, "GoServiceClient must be initialized before tools"
+        assert self.data_processor is not None, "DataProcessor must be initialized before tools"
+
         # 创建工具实例
         paper_tools = PaperTools(self.go_client, self.data_processor)
         author_tools = AuthorTools(self.go_client, self.data_processor)
