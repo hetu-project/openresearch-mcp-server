@@ -12,13 +12,13 @@ from mcp.types import (
     TextContent, Tool
 )
 
-from .config import settings
-from .clients.go_client import GoServiceClient
-from .services.data_processor import DataProcessor
-from .tools.paper_tools import PaperTools
-from .tools.author_tools import AuthorTools
-from .tools.network_tools import NetworkTools
-from .tools.trend_tools import TrendTools
+from src.config import settings
+from src.clients.go_client import GoServiceClient
+from src.services.data_processor import DataProcessor
+from src.mcp.tools.paper_tools import PaperTools   
+from src.mcp.tools.author_tools import AuthorTools
+from src.mcp.tools.network_tools import NetworkTools
+from src.mcp.tools.trend_tools import TrendTools 
 
 logger = structlog.get_logger()
 

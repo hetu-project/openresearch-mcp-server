@@ -1,12 +1,12 @@
 # src/tools/trend_tools.py
 from typing import Dict, Any, List
 import structlog
-from mcp.server.models import Tool
-from mcp.types import TextContent
-from ..clients.go_client import GoServiceClient
-from ..services.data_processor import DataProcessor
-from ..models.data_models import TrendAnalysis, TrendData
-from ..utils.error_handler import handle_tool_error
+
+from mcp.types import Tool,TextContent
+from src.clients.go_client import GoServiceClient
+from src.services.data_processor import DataProcessor
+from src.models.data_models import TrendAnalysis, TrendData
+from src.utils.error_handler import handle_tool_error
 
 logger = structlog.get_logger()
 
