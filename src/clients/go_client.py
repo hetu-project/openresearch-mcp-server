@@ -17,6 +17,7 @@ class GoServiceClient:
         self.base_url = settings.go_service_url.rstrip('/')
         self.timeout = aiohttp.ClientTimeout(total=settings.go_service_timeout)
         self.session: Optional[aiohttp.ClientSession] = None
+        self._session_lock = asyncio.Lock()
         
     async def __aenter__(self):
         """异步上下文管理器入口"""
@@ -28,25 +29,58 @@ class GoServiceClient:
         await self.disconnect()
     
     async def connect(self):
-        """建立连接"""
-        if self.session is None:
-            connector = aiohttp.TCPConnector(
-                limit=100,
-                limit_per_host=30,
-                keepalive_timeout=30,
-                enable_cleanup_closed=True
-            )
+        """简化的线程安全连接"""
+        # 快速检查，避免不必要的锁竞争
+        if self.session and not self.session.closed:
+            return
             
-            self.session = aiohttp.ClientSession(
-                connector=connector,
-                timeout=self.timeout,
-                headers={
-                    'Content-Type': 'application/json',
-                    'User-Agent': f'{settings.server_name}/{settings.server_version}'
-                }
-            )
+        async with self._session_lock:
+            # 双重检查模式 - 这就足够了！
+            if self.session and not self.session.closed:
+                return
             
-            logger.info("Go service client connected", base_url=self.base_url)
+            old_session = self.session
+            new_session = None    
+            connector = None
+
+            # 创建新连接
+            try:
+                connector = aiohttp.TCPConnector(
+                    limit=100,
+                    limit_per_host=30,
+                    keepalive_timeout=30,
+                    enable_cleanup_closed=True
+                )
+                
+                new_session = aiohttp.ClientSession(
+                    connector=connector,
+                    timeout=self.timeout,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'User-Agent': f'{settings.server_name}/{settings.server_version}'
+                    }
+                )
+                self.session = new_session
+
+                # 清理旧连接
+                if old_session and not old_session.closed:
+                    try:
+                        asyncio.create_task(old_session.close())
+                    except Exception as e:
+                        logger.warning("Failed to close old session", error=str(e))
+
+                logger.info("Go service client connected", base_url=self.base_url)
+                
+            except Exception as e:
+                # 创建失败时清理资源
+                if connector:
+                    try:
+                        await connector.close()
+                    except Exception:
+                        pass
+                self.session = None
+                logger.error("Failed to create Go service client", error=str(e))
+                raise
     
     async def disconnect(self):
         """断开连接"""
@@ -63,7 +97,7 @@ class GoServiceClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """发送HTTP请求"""
-        if not self.session:
+        if not self.session or self.session.closed:
             await self.connect()
         
         url = f"{self.base_url}{endpoint}"
