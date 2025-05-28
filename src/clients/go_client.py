@@ -89,6 +89,16 @@ class GoServiceClient:
             self.session = None
             logger.info("Go service client disconnected")
     
+    async def _ensure_session(self) -> aiohttp.ClientSession:
+        """确保 session 存在并返回非 None 的 session"""
+        if not self.session or self.session.closed:
+            await self.connect()
+        
+        if not self.session:
+            raise ServiceConnectionError("Failed to create session")
+        
+        return self.session
+        
     async def _make_request(
         self, 
         method: str, 
@@ -97,8 +107,7 @@ class GoServiceClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """发送HTTP请求"""
-        if not self.session or self.session.closed:
-            await self.connect()
+        session = await self._ensure_session()
         
         url = f"{self.base_url}{endpoint}"
         
@@ -111,7 +120,7 @@ class GoServiceClient:
                 params=params
             )
             
-            async with self.session.request(
+            async with session.request(
                 method=method,
                 url=url,
                 json=data,
@@ -124,7 +133,7 @@ class GoServiceClient:
                     logger.error(
                         "Go service request failed",
                         status=response.status,
-                        error=error_text,
+                        error=error_text[:500],
                         url=url
                     )
                     raise ServiceConnectionError(
