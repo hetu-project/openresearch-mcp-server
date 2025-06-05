@@ -1,43 +1,39 @@
-# src/config.py
+"""
+配置管理模块
+"""
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 from typing import Optional
-from pydantic import BaseSettings, Field
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class Settings(BaseSettings):
-    """应用配置"""
+    """应用配置类"""
     
-    # 服务配置
-    server_name: str = Field(default="academic-mcp-server", env="SERVER_NAME")
-    server_version: str = Field(default="0.1.0", env="SERVER_VERSION")
-    debug: bool = Field(default=False, env="DEBUG")
+    # 服务器配置
+    server_name: str = Field(default="OpenResearch MCP Server", description="服务器名称")
+    server_version: str = Field(default="1.0.0", description="服务器版本")
+    debug: bool = Field(default=False, description="调试模式")
     
-    # Go服务配置
-    go_service_base_url: str = Field(
-        default="http://localhost:8080", 
-        env="GO_SERVICE_BASE_URL"
-    )
-    go_service_timeout: int = Field(default=30, env="GO_SERVICE_TIMEOUT")
-    go_service_max_retries: int = Field(default=3, env="GO_SERVICE_MAX_RETRIES")
+    # Go 服务配置
+    go_service_url: str = Field(default="http://localhost:8080", description="Go服务地址")
+    go_service_timeout: int = Field(default=30, description="Go服务超时时间(秒)")
     
-    # 缓存配置
-    #redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
-    enable_cache: bool = True
-    cache_ttl: int = Field(default=3600, env="CACHE_TTL")  # 1小时
-    
-    # 限流配置
-    # rate_limit_requests: int = Field(default=100, env="RATE_LIMIT_REQUESTS")
-    # rate_limit_window: int = Field(default=60, env="RATE_LIMIT_WINDOW")
+    # 数据库配置
+    # database_url: Optional[str] = Field(default=None, description="数据库连接URL")
     
     # 日志配置
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    log_format: str = Field(default="json", env="LOG_FORMAT")
+    log_level: str = Field(default="INFO", description="日志级别")
+    log_format: str = Field(default="json", description="日志格式")
+    
+    # API配置
+    max_results: int = Field(default=100, description="最大返回结果数")
+    cache_ttl: int = Field(default=3600, description="缓存TTL(秒)")
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-
-# 全局配置实例
+# 创建全局配置实例
 settings = Settings()

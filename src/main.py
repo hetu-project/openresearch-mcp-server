@@ -9,8 +9,8 @@ import signal
 from typing import Optional
 import structlog
 
-from server.mcp_server import AcademicMCPServer
-from server.utils.logging_config import setup_logging
+from src.server import AcademicMCPServer
+from src.utils.logging_config import setup_logging
 
 # 设置日志
 setup_logging()
@@ -43,37 +43,54 @@ class ServerManager:
             # 初始化服务器
             await self.server_instance.initialize()
             
-            # 运行服务器
+            # 确保 go_client 已初始化
+            if self.server_instance.go_client is None:
+                raise RuntimeError("Go client not initialized")
+            
             logger.info("Academic MCP Server is ready")
+            
+            # 使用 stdio 作为默认的输入输出流
+            from mcp.server.stdio import stdio_server
+            
             async with self.server_instance.go_client:
-                # 创建服务器运行任务
-                server_task = asyncio.create_task(
-                    self.server_instance.server.run()
-                )
-                
-                # 等待关闭信号或服务器完成
-                shutdown_task = asyncio.create_task(
-                    self._shutdown_event.wait()
-                )
-                
-                done, pending = await asyncio.wait(
-                    [server_task, shutdown_task],
-                    return_when=asyncio.FIRST_COMPLETED
-                )
-                
-                # 取消未完成的任务
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-                
-                # 检查是否有异常
-                for task in done:
-                    if task.exception():
-                        raise task.exception()
-                        
+                # 使用 stdio_server 运行 MCP 服务器
+                async with stdio_server() as (read_stream, write_stream):
+                    # 使用服务器的内置方法创建初始化选项
+                    init_options = self.server_instance.server.create_initialization_options()
+                    
+                    # 创建服务器运行任务
+                    server_task = asyncio.create_task(
+                        self.server_instance.server.run(
+                            read_stream=read_stream,
+                            write_stream=write_stream,
+                            initialization_options=init_options
+                        )
+                    )
+                    
+                    # 等待关闭信号或服务器完成
+                    shutdown_task = asyncio.create_task(
+                        self._shutdown_event.wait()
+                    )
+                    
+                    done, pending = await asyncio.wait(
+                        [server_task, shutdown_task],
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    
+                    # 取消未完成的任务
+                    for task in pending:
+                        task.cancel()
+                        try:
+                            await task
+                        except asyncio.CancelledError:
+                            pass
+                    
+                    # 检查是否有异常
+                    for task in done:
+                        exception = task.exception()
+                        if exception is not None:
+                            raise exception
+                            
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt")
         except Exception as e:
@@ -81,6 +98,8 @@ class ServerManager:
             raise
         finally:
             await self.cleanup()
+
+
     
     async def cleanup(self):
         """清理资源"""
