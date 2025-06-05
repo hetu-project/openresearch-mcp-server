@@ -14,11 +14,8 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, description="调试模式")
     
     # Go 服务配置
-    go_service_url: str = Field(default="http://localhost:8080", description="Go服务地址")
+    go_service_url: str = Field(default="https://test.nftkash.xyz/neo4j", description="Go服务地址")
     go_service_timeout: int = Field(default=30, description="Go服务超时时间(秒)")
-    
-    # 数据库配置
-    # database_url: Optional[str] = Field(default=None, description="数据库连接URL")
     
     # 日志配置
     log_level: str = Field(default="INFO", description="日志级别")

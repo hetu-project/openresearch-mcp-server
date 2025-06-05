@@ -1,45 +1,41 @@
-# src/tools/network_tools.py
+# src/mcp/tools/network_tools.py
 from typing import Dict, Any, List
 import structlog
 from mcp.types import Tool, TextContent
-from src.clients.go_client import GoServiceClient
-from src.services.data_processor import DataProcessor
-from src.utils.error_handler import handle_tool_error  
+
+from .base_tools import BaseTools
+from src.utils.error_handler import handle_tool_error
 
 logger = structlog.get_logger()
 
-class NetworkTools:
+class NetworkTools(BaseTools):
     """网络分析工具 - MVP版本"""
-    
-    def __init__(self, go_client: GoServiceClient, data_processor: DataProcessor):
-        self.go_client = go_client
-        self.data_processor = data_processor
     
     def get_tools(self) -> List[Tool]:
         """获取工具定义"""
         return [
             Tool(
                 name="get_citation_network",
-                description="获取论文引用网络图谱",
+                description="获取论文引用网络",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "paper_id": {
                             "type": "string",
-                            "description": "论文ID"
+                            "description": "种子论文ID"
                         },
                         "depth": {
                             "type": "integer",
                             "minimum": 1,
-                            "maximum": 2,
-                            "default": 1,
+                            "maximum": 3,
+                            "default": 2,
                             "description": "网络深度"
                         },
                         "max_nodes": {
                             "type": "integer",
                             "minimum": 10,
-                            "maximum": 50,
-                            "default": 20,
+                            "maximum": 200,
+                            "default": 50,
                             "description": "最大节点数"
                         }
                     },
@@ -48,13 +44,13 @@ class NetworkTools:
             ),
             Tool(
                 name="get_collaboration_network",
-                description="获取作者合作网络图谱",
+                description="获取作者合作网络",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "author_id": {
                             "type": "string",
-                            "description": "作者ID"
+                            "description": "种子作者ID"
                         },
                         "depth": {
                             "type": "integer",
@@ -66,8 +62,8 @@ class NetworkTools:
                         "max_nodes": {
                             "type": "integer",
                             "minimum": 10,
-                            "maximum": 50,
-                            "default": 20,
+                            "maximum": 100,
+                            "default": 30,
                             "description": "最大节点数"
                         }
                     },
@@ -80,8 +76,8 @@ class NetworkTools:
     async def get_citation_network(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """获取引用网络工具"""
         paper_id = arguments["paper_id"]
-        depth = arguments.get("depth", 1)
-        max_nodes = arguments.get("max_nodes", 20)
+        depth = arguments.get("depth", 2)
+        max_nodes = arguments.get("max_nodes", 50)
         
         logger.info(
             "Getting citation network",
@@ -91,7 +87,7 @@ class NetworkTools:
         )
         
         try:
-            # 使用Go服务的 /network/paper/:id 接口
+            # 使用Go客户端的网络接口
             raw_result = await self.go_client.get_citation_network(
                 seed_papers=[paper_id],
                 depth=depth,
@@ -103,24 +99,25 @@ class NetworkTools:
             
         except Exception as e:
             logger.error("Get citation network failed", error=str(e))
-            return [TextContent(type="text", text=f"获取引用网络失败: {str(e)}")]
+            error_content = self._format_error_response(str(e), "获取引用网络")
+            return [TextContent(type="text", text=error_content)]
     
     @handle_tool_error
     async def get_collaboration_network(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """获取合作网络工具"""
         author_id = arguments["author_id"]
         depth = arguments.get("depth", 1)
-        max_nodes = arguments.get("max_nodes", 20)
+        max_nodes = arguments.get("max_nodes", 30)
         
         logger.info(
-            "Getting collaboration network", 
+            "Getting collaboration network",
             author_id=author_id,
             depth=depth,
             max_nodes=max_nodes
         )
         
         try:
-            # 使用Go服务的 /network/author/:id 接口
+            # 使用Go客户端的网络接口
             raw_result = await self.go_client.get_collaboration_network(
                 authors=[author_id]
             )
@@ -130,170 +127,148 @@ class NetworkTools:
             
         except Exception as e:
             logger.error("Get collaboration network failed", error=str(e))
-            return [TextContent(type="text", text=f"获取合作网络失败: {str(e)}")]
+            error_content = self._format_error_response(str(e), "获取合作网络")
+            return [TextContent(type="text", text=error_content)]
     
     def _format_citation_network(self, raw_result: Dict[str, Any], paper_id: str) -> str:
         """格式化引用网络结果"""
-        graph = raw_result.get("graph", {})
-        nodes = graph.get("nodes", [])
-        edges = graph.get("edges", [])
+        nodes = raw_result.get("nodes", [])
+        edges = raw_result.get("edges", [])
         
-        content = f"# 论文引用网络分析\n\n"
-        content += f"**中心论文ID**: {paper_id}\n"
+        content = f"# 引用网络分析\n\n"
+        content += f"**种子论文ID**: {paper_id}\n"
         content += f"**网络规模**: {len(nodes)} 个节点, {len(edges)} 条边\n\n"
         
         if not nodes:
-            content += "未找到网络数据。\n"
+            content += "未找到相关的引用网络。\n"
             return content
-        
-        # 找到中心节点（第一个节点通常是中心节点）
-        center_node = nodes[0] if nodes else None
-        if center_node:
-            content += f"## 中心论文\n"
-            content += f"**标题**: {center_node.get('label', 'Unknown')}\n"
-            if center_node.get('properties', {}).get('citations'):
-                content += f"**引用数**: {center_node['properties']['citations']}\n"
-            if center_node.get('properties', {}).get('published_at'):
-                content += f"**发表时间**: {center_node['properties']['published_at'][:10]}\n"
-            content += "\n"
         
         # 统计节点类型
         node_types = {}
-        paper_nodes = []
         for node in nodes:
-            node_type = node.get('type', 'unknown')
+            node_type = node.get("type", "unknown")
             node_types[node_type] = node_types.get(node_type, 0) + 1
-            if node_type == 'paper':
-                paper_nodes.append(node)
         
         content += "## 网络组成\n"
         for node_type, count in node_types.items():
             content += f"- {node_type}: {count} 个\n"
         content += "\n"
         
-        # 显示相关论文
-        if len(paper_nodes) > 1:  # 排除中心节点
-            content += "## 相关论文\n"
-            related_papers = paper_nodes[1:11]  # 显示前10个相关论文
+        # 显示重要节点（论文）
+        paper_nodes = [node for node in nodes if node.get("type") == "paper"]
+        if paper_nodes:
+            content += "## 重要论文节点\n"
             
-            for i, node in enumerate(related_papers, 1):
-                content += f"{i}. **{node.get('label', 'Unknown Title')}**\n"
+            # 按引用数排序（如果有的话）
+            paper_nodes.sort(
+                key=lambda x: x.get("properties", {}).get("citations", 0),
+                reverse=True
+            )
+            
+            for i, node in enumerate(paper_nodes[:10], 1):
+                label = self._safe_get_str(node, "label", "Unknown Paper")
+                properties = node.get("properties", {})
+                citations = self._safe_get_int(properties, "citations")
                 
-                properties = node.get('properties', {})
-                if properties.get('citations'):
-                    content += f"   引用数: {properties['citations']}\n"
-                
-                # 查找与中心节点的关系
-                relation_type = "未知关系"
-                for edge in edges:
-                    if (edge.get('source') == paper_id and edge.get('target') == node.get('id')) or \
-                       (edge.get('target') == paper_id and edge.get('source') == node.get('id')):
-                        if edge.get('type') == 'cites':
-                            if edge.get('source') == paper_id:
-                                relation_type = "被中心论文引用"
-                            else:
-                                relation_type = "引用中心论文"
-                        elif edge.get('type') == 'similar_topic':
-                            relation_type = "相似主题"
-                        break
-                
-                content += f"   关系: {relation_type}\n"
+                content += f"{i}. **{self._truncate_text(label, 80)}**"
+                if citations > 0:
+                    content += f" (引用数: {citations})"
                 content += "\n"
-        
-        # 网络统计
-        content += f"## 网络统计\n"
-        if len(nodes) > 0:
-            avg_degree = len(edges) * 2 / len(nodes)
-            content += f"- 平均度数: {avg_degree:.2f}\n"
         
         # 边类型统计
         edge_types = {}
         for edge in edges:
-            edge_type = edge.get('type', 'unknown')
+            edge_type = edge.get("type", "unknown")
             edge_types[edge_type] = edge_types.get(edge_type, 0) + 1
         
         if edge_types:
-            content += "- 关系类型分布:\n"
+            content += "\n## 关系类型\n"
             for edge_type, count in edge_types.items():
-                content += f"  - {edge_type}: {count} 条\n"
+                content += f"- {edge_type}: {count} 条\n"
+        
+        # 网络统计
+        content += f"\n## 网络统计\n"
+        if len(nodes) > 0:
+            avg_degree = (len(edges) * 2) / len(nodes)
+            content += f"- 平均度数: {avg_degree:.2f}\n"
+        content += f"- 网络密度: {len(edges) / max(1, len(nodes) * (len(nodes) - 1) / 2):.4f}\n"
         
         return content
     
     def _format_collaboration_network(self, raw_result: Dict[str, Any], author_id: str) -> str:
         """格式化合作网络结果"""
-        graph = raw_result.get("graph", {})
-        nodes = graph.get("nodes", [])
-        edges = graph.get("edges", [])
+        nodes = raw_result.get("nodes", [])
+        edges = raw_result.get("edges", [])
         
-        content = f"# 作者合作网络分析\n\n"
-        content += f"**中心作者ID**: {author_id}\n"
+        content = f"# 合作网络分析\n\n"
+        content += f"**核心作者ID**: {author_id}\n"
         content += f"**网络规模**: {len(nodes)} 个节点, {len(edges)} 条边\n\n"
         
         if not nodes:
-            content += "未找到网络数据。\n"
+            content += "未找到相关的合作网络。\n"
             return content
         
-        # 找到中心节点
-        center_node = nodes[0] if nodes else None
-        if center_node:
-            content += f"## 中心作者\n"
-            content += f"**姓名**: {center_node.get('label', 'Unknown')}\n"
-            properties = center_node.get('properties', {})
-            if properties.get('affiliation'):
-                content += f"**机构**: {properties['affiliation']}\n"
-            if properties.get('citation_count') is not None:
-                content += f"**引用数**: {properties['citation_count']}\n"
-            content += "\n"
+        # 显示作者节点
+        author_nodes = [node for node in nodes if node.get("type") == "author"]
         
-        # 显示合作者
-        author_nodes = [node for node in nodes if node.get('type') == 'author']
-        if len(author_nodes) > 1:  # 排除中心节点
-            content += f"## 合作者网络 ({len(author_nodes)-1}位合作者)\n\n"
+        if author_nodes:
+            content += f"## 网络中的作者 ({len(author_nodes)} 位)\n"
             
-            collaborators = author_nodes[1:21]  # 显示前20个合作者
-            for i, node in enumerate(collaborators, 1):
-                content += f"{i}. **{node.get('label', 'Unknown')}**\n"
+            for i, node in enumerate(author_nodes[:20], 1):
+                label = self._safe_get_str(node, "label", "Unknown Author")
+                properties = node.get("properties", {})
+                affiliation = self._safe_get_str(properties, "affiliation")
+                paper_count = self._safe_get_int(properties, "paper_count")
+                citation_count = self._safe_get_int(properties, "citation_count")
                 
-                properties = node.get('properties', {})
-                if properties.get('affiliation'):
-                    content += f"   机构: {properties['affiliation']}\n"
-                if properties.get('citation_count') is not None:
-                    content += f"   引用数: {properties['citation_count']}\n"
-                
-                # 查找合作关系
-                collaboration_count = 0
-                for edge in edges:
-                    if (edge.get('source') == author_id and edge.get('target') == node.get('id')) or \
-                       (edge.get('target') == author_id and edge.get('source') == node.get('id')):
-                        edge_props = edge.get('properties', {})
-                        if edge_props.get('papers_count'):
-                            collaboration_count = edge_props['papers_count']
-                        break
-                
-                if collaboration_count > 0:
-                    content += f"   合作论文数: {collaboration_count}\n"
-                
+                content += f"{i}. **{label}**"
+                if affiliation:
+                    content += f" ({affiliation})"
+                if paper_count > 0:
+                    content += f" - {paper_count} 篇论文"
+                if citation_count > 0:
+                    content += f", {citation_count} 引用"
                 content += "\n"
         
-        # 合作统计
-        content += f"## 合作统计\n"
-        content += f"- 合作关系数: {len(edges)}\n"
+        # 合作关系统计
+        collaboration_edges = [edge for edge in edges if edge.get("type") == "collaborates"]
         
-        if len(nodes) > 1:
-            avg_collaborators = len(edges) * 2 / len(nodes)
+        content += f"\n## 合作统计\n"
+        content += f"- 合作关系数: {len(collaboration_edges)}\n"
+        
+        if len(author_nodes) > 0:
+            avg_collaborators = len(collaboration_edges) * 2 / len(author_nodes)
             content += f"- 平均合作伙伴数: {avg_collaborators:.2f}\n"
         
-        # 统计合作强度
-        collaboration_strengths = []
-        for edge in edges:
-            props = edge.get('properties', {})
-            if props.get('papers_count'):
-                collaboration_strengths.append(props['papers_count'])
-        
-        if collaboration_strengths:
-            max_collab = max(collaboration_strengths)
-            avg_collab = sum(collaboration_strengths) / len(collaboration_strengths)
-            content += f"- 最强合作关系: {max_collab} 篇论文\n"
-            content += f"- 平均合作强度: {avg_collab:.1f} 篇论文\n"
+        # 显示主要合作关系
+        if collaboration_edges:
+            content += f"\n## 主要合作关系\n"
+            
+            # 按合作强度排序
+            collaboration_edges.sort(
+                key=lambda x: x.get("properties", {}).get("papers_count", 0),
+                reverse=True
+            )
+            
+            for i, edge in enumerate(collaboration_edges[:10], 1):
+                source_id = edge.get("source", "")
+                target_id = edge.get("target", "")
+                properties = edge.get("properties", {})
+                papers_count = self._safe_get_int(properties, "papers_count")
+                
+                # 查找对应的作者名称
+                source_name = "Unknown"
+                target_name = "Unknown"
+                
+                for node in author_nodes:
+                    if node.get("id") == source_id:
+                        source_name = self._safe_get_str(node, "label", "Unknown")
+                    elif node.get("id") == target_id:
+                        target_name = self._safe_get_str(node, "label", "Unknown")
+                
+                content += f"{i}. **{source_name}** ↔ **{target_name}**"
+                if papers_count > 0:
+                    content += f" (合作论文: {papers_count} 篇)"
+                content += "\n"
         
         return content

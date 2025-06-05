@@ -1,3 +1,4 @@
+# src/mcp/tools/__init__.py
 """
 MCP Tools Module
 
@@ -17,7 +18,10 @@ __all__ = [
     "PaperTools",
     "TrendTools",
     "get_all_tools",
-    "create_tool_registry"
+    "create_tool_registry",
+    "get_all_tool_definitions",
+    "get_tool_categories",
+    "list_all_tools"
 ]
 
 def get_all_tools(go_client, data_processor):
@@ -57,13 +61,13 @@ def create_tool_registry(go_client, data_processor):
     author_tools = tools["author"]
     registry["search_authors"] = author_tools.search_authors
     registry["get_author_details"] = author_tools.get_author_details
+    registry["get_author_papers"] = author_tools.get_author_papers
     
     # Register paper tools
     paper_tools = tools["paper"]
     registry["search_papers"] = paper_tools.search_papers
     registry["get_paper_details"] = paper_tools.get_paper_details
     registry["get_paper_citations"] = paper_tools.get_paper_citations
-    registry["get_trending_papers"] = paper_tools.get_trending_papers
     
     # Register network tools
     network_tools = tools["network"]
@@ -72,9 +76,8 @@ def create_tool_registry(go_client, data_processor):
     
     # Register trend tools
     trend_tools = tools["trend"]
-    registry["get_trending_papers"] = trend_tools.get_trending_papers  # 注意：这里有重复，需要处理
+    registry["get_trending_papers"] = trend_tools.get_trending_papers
     registry["get_top_keywords"] = trend_tools.get_top_keywords
-    registry["analyze_domain_trends"] = trend_tools.analyze_domain_trends
     
     return registry
 
@@ -97,17 +100,17 @@ def get_all_tool_definitions(go_client, data_processor):
     
     return all_definitions
 
-# 更新工具分类以反映实际可用的工具
+# 工具分类定义 - MVP版本
 TOOL_CATEGORIES = {
     "author": {
         "name": "Author Tools",
         "description": "Tools for searching and analyzing academic authors",
-        "tools": ["search_authors", "get_author_details"]
+        "tools": ["search_authors", "get_author_details", "get_author_papers"]
     },
     "paper": {
         "name": "Paper Tools", 
         "description": "Tools for searching and analyzing academic papers",
-        "tools": ["search_papers", "get_paper_details", "get_paper_citations", "get_trending_papers"]
+        "tools": ["search_papers", "get_paper_details", "get_paper_citations"]
     },
     "network": {
         "name": "Network Analysis Tools",
@@ -117,7 +120,7 @@ TOOL_CATEGORIES = {
     "trend": {
         "name": "Trend Analysis Tools",
         "description": "Tools for analyzing research trends and hot topics",
-        "tools": ["get_top_keywords", "analyze_domain_trends"]
+        "tools": ["get_trending_papers", "get_top_keywords"]
     }
 }
 
@@ -130,20 +133,106 @@ def get_tool_categories():
     """
     return TOOL_CATEGORIES
 
-def get_tools_by_category(category: str, go_client, data_processor):
+def list_all_tools():
     """
-    Get tools for a specific category.
+    List all available tools with their descriptions.
+    
+    Returns:
+        dict: Dictionary with tool information organized by category
+    """
+    # 工具描述定义
+    tool_descriptions = {
+        # Author tools
+        "search_authors": "Search for academic authors by name, affiliation, or research area",
+        "get_author_details": "Get detailed information about specific authors including metrics and collaborations",
+        "get_author_papers": "Get all papers published by a specific author",
+        
+        # Paper tools
+        "search_papers": "Search for academic papers by keywords, authors, year, venue, or other criteria",
+        "get_paper_details": "Get detailed information about specific papers including abstract and metadata",
+        "get_paper_citations": "Get citation relationships for a specific paper (citing and cited papers)",
+        
+        # Network tools
+        "get_citation_network": "Generate citation network graph showing paper relationships",
+        "get_collaboration_network": "Generate collaboration network graph showing author relationships",
+        
+        # Trend tools
+        "get_trending_papers": "Get currently trending/popular papers in specified time window",
+        "get_top_keywords": "Get currently popular research keywords/topics with paper counts"
+    }
+    
+    result = {}
+    
+    for category, info in TOOL_CATEGORIES.items():
+        result[category] = {
+            "category_name": info["name"],
+            "category_description": info["description"],
+            "tools": []
+        }
+        
+        for tool_name in info["tools"]:
+            result[category]["tools"].append({
+                "name": tool_name,
+                "description": tool_descriptions.get(tool_name, "No description available")
+            })
+    
+    return result
+
+def get_tool_stats():
+    """
+    Get basic statistics about available tools.
+    
+    Returns:
+        dict: Tool statistics
+    """
+    total_tools = sum(len(cat["tools"]) for cat in TOOL_CATEGORIES.values())
+    
+    return {
+        "total_tools": total_tools,
+        "total_categories": len(TOOL_CATEGORIES),
+        "tools_by_category": {
+            cat: len(info["tools"]) 
+            for cat, info in TOOL_CATEGORIES.items()
+        }
+    }
+
+def validate_tool_registry(go_client, data_processor):
+    """
+    Validate that all tools in categories are properly registered.
     
     Args:
-        category: Category name ("author", "paper", "network", "trend")
         go_client: GoServiceClient instance
         data_processor: DataProcessor instance
         
     Returns:
-        Tool instance for the specified category or None if not found
+        dict: Validation results
     """
-    tools = get_all_tools(go_client, data_processor)
-    return tools.get(category)
+    registry = create_tool_registry(go_client, data_processor)
+    
+    # 收集所有分类中的工具
+    all_category_tools = []
+    for category_info in TOOL_CATEGORIES.values():
+        all_category_tools.extend(category_info["tools"])
+    
+    # 检查缺失的工具
+    missing_tools = [
+        tool for tool in all_category_tools 
+        if tool not in registry
+    ]
+    
+    # 检查多余的工具
+    extra_tools = [
+        tool for tool in registry.keys() 
+        if tool not in all_category_tools
+    ]
+    
+    return {
+        "valid": len(missing_tools) == 0 and len(extra_tools) == 0,
+        "total_registered": len(registry),
+        "total_categorized": len(all_category_tools),
+        "missing_tools": missing_tools,
+        "extra_tools": extra_tools
+    }
 
 def get_tool_by_name(tool_name: str, go_client, data_processor):
     """
@@ -160,58 +249,17 @@ def get_tool_by_name(tool_name: str, go_client, data_processor):
     registry = create_tool_registry(go_client, data_processor)
     return registry.get(tool_name)
 
-def list_all_tools():
+def get_tools_by_category(category: str, go_client, data_processor):
     """
-    List all available tools with their descriptions.
+    Get tools for a specific category.
     
-    Returns:
-        dict: Dictionary with tool information
-    """
-    all_tools = {}
-    
-    for category, info in TOOL_CATEGORIES.items():
-        all_tools[category] = {
-            "category_name": info["name"],
-            "category_description": info["description"],
-            "tools": []
-        }
+    Args:
+        category: Category name ("author", "paper", "network", "trend")
+        go_client: GoServiceClient instance
+        data_processor: DataProcessor instance
         
-        for tool_name in info["tools"]:
-            # 根据工具名称添加描述
-            tool_descriptions = {
-                "search_authors": "Search for academic authors by name, affiliation, or research area",
-                "get_author_details": "Get detailed information about specific authors",
-                "search_papers": "Search for academic papers by keywords, authors, or other criteria",
-                "get_paper_details": "Get detailed information about specific papers",
-                "get_paper_citations": "Get citation relationships for a specific paper",
-                "get_trending_papers": "Get currently trending/popular papers",
-                "get_citation_network": "Generate citation network graph for papers",
-                "get_collaboration_network": "Generate collaboration network graph for authors",
-                "get_top_keywords": "Get currently popular research keywords/topics",
-                "analyze_domain_trends": "Analyze trends in a specific research domain"
-            }
-            
-            all_tools[category]["tools"].append({
-                "name": tool_name,
-                "description": tool_descriptions.get(tool_name, "No description available")
-            })
-    
-    return all_tools
-
-# 工具使用统计（可选，用于监控）
-def get_tool_usage_stats():
-    """
-    Get statistics about tool usage (placeholder for future implementation).
-    
     Returns:
-        dict: Tool usage statistics
+        Tool instance for the specified category or None if not found
     """
-    return {
-        "total_tools": sum(len(cat["tools"]) for cat in TOOL_CATEGORIES.values()),
-        "categories": len(TOOL_CATEGORIES),
-        "most_popular_category": "paper",  # 基于预期使用情况
-        "tools_by_category": {
-            cat: len(info["tools"]) 
-            for cat, info in TOOL_CATEGORIES.items()
-        }
-    }
+    tools = get_all_tools(go_client, data_processor)
+    return tools.get(category)

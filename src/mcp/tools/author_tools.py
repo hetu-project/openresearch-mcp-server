@@ -1,20 +1,15 @@
-# src/tools/author_tools.py
+# src/mcp/tools/author_tools.py
 from typing import Dict, Any, List
 import structlog
 from mcp.types import Tool, TextContent
 
-from src.clients.go_client import GoServiceClient 
-from src.services.data_processor import DataProcessor
+from .base_tools import BaseTools
 from src.utils.error_handler import handle_tool_error
 
 logger = structlog.get_logger()
 
-class AuthorTools:
+class AuthorTools(BaseTools):
     """作者相关工具 - MVP版本"""
-    
-    def __init__(self, go_client: GoServiceClient, data_processor: DataProcessor):
-        self.go_client = go_client
-        self.data_processor = data_processor
     
     def get_tools(self) -> List[Tool]:
         """获取工具定义"""
@@ -99,7 +94,8 @@ class AuthorTools:
             
         except Exception as e:
             logger.error("Author search failed", error=str(e))
-            return [TextContent(type="text", text=f"搜索作者失败: {str(e)}")]
+            error_content = self._format_error_response(str(e), "作者搜索")
+            return [TextContent(type="text", text=error_content)]
     
     @handle_tool_error
     async def get_author_details(self, arguments: Dict[str, Any]) -> List[TextContent]:
@@ -116,7 +112,8 @@ class AuthorTools:
             
         except Exception as e:
             logger.error("Get author details failed", error=str(e))
-            return [TextContent(type="text", text=f"获取作者详情失败: {str(e)}")]
+            error_content = self._format_error_response(str(e), "获取作者详情")
+            return [TextContent(type="text", text=error_content)]
     
     @handle_tool_error
     async def get_author_papers(self, arguments: Dict[str, Any]) -> List[TextContent]:
@@ -133,55 +130,52 @@ class AuthorTools:
             
         except Exception as e:
             logger.error("Get author papers failed", error=str(e))
-            return [TextContent(type="text", text=f"获取作者论文失败: {str(e)}")]
+            error_content = self._format_error_response(str(e), "获取作者论文")
+            return [TextContent(type="text", text=error_content)]
     
     def _format_author_search_result(self, raw_result: Dict[str, Any], query: str) -> str:
         """格式化作者搜索结果"""
         authors = raw_result.get("authors", [])
-        
-        content = f"# 作者搜索结果\n\n"
-        content += f"**查询**: {query}\n"
-        content += f"**找到**: {len(authors)} 位作者\n\n"
+        count = raw_result.get("count", len(authors))
         
         if not authors:
-            content += "未找到相关作者。\n"
-            return content
+            return self._format_empty_result(query, "作者")
+        
+        content = self._format_list_header("作者搜索结果", count, query)
         
         for i, author in enumerate(authors, 1):
-            content += f"## {i}. {author.get('name', 'Unknown')}\n\n"
+            name = self._safe_get_str(author, 'name', 'Unknown Author')
+            content += f"## {i}. {name}\n\n"
             
             # 基本信息
-            content += f"**ID**: {author.get('id', 'N/A')}\n"
-            
-            if author.get('affiliation'):
-                content += f"**机构**: {author['affiliation']}\n"
-            
-            if author.get('email'):
-                content += f"**邮箱**: {author['email']}\n"
-            
-            # 学术指标
-            if author.get('h_index') is not None:
-                content += f"**H指数**: {author['h_index']}\n"
-            
-            if author.get('citation_count') is not None:
-                content += f"**引用数**: {author['citation_count']}\n"
-            
-            if author.get('paper_count') is not None:
-                content += f"**论文数**: {author['paper_count']}\n"
+            content += self._format_author_basic_info(author)
             
             # 研究兴趣
-            if author.get('research_interests'):
-                interests = author['research_interests']
-                if isinstance(interests, list):
-                    content += f"**研究兴趣**: {', '.join(interests)}\n"
-                else:
-                    content += f"**研究兴趣**: {interests}\n"
+            interests = author.get('research_interests')
+            if interests:
+                content += f"**研究兴趣**: {', '.join(interests)}\n"
+            
+            # 邮箱
+            email = self._safe_get_str(author, 'email')
+            if email:
+                content += f"**邮箱**: {email}\n"
             
             # 合作者信息
-            if author.get('coauthors'):
-                coauthor_count = len(author['coauthors'])
-                content += f"**合作者数量**: {coauthor_count}\n"
+            coauthors = author.get('coauthors', [])
+            if coauthors:
+                content += f"**主要合作者**: {len(coauthors)} 位\n"
+                # 显示前3位合作者
+                for j, coauthor in enumerate(coauthors[:3], 1):
+                    coauthor_name = self._safe_get_str(coauthor, 'name')
+                    collaboration_count = self._safe_get_int(coauthor, 'collaboration_count')
+                    if coauthor_name:
+                        content += f"  {j}. {coauthor_name}"
+                        if collaboration_count > 0:
+                            content += f" (合作{collaboration_count}次)"
+                        content += "\n"
             
+            # 作者ID
+            content += f"**ID**: {self._safe_get_str(author, 'id', 'N/A')}\n"
             content += "\n---\n\n"
         
         return content
@@ -196,44 +190,51 @@ class AuthorTools:
         content = "# 作者详情\n\n"
         
         for author in authors:
-            content += f"## {author.get('name', 'Unknown')}\n\n"
+            name = self._safe_get_str(author, 'name', 'Unknown Author')
+            content += f"## {name}\n\n"
             
             # 基本信息
             content += "### 基本信息\n"
-            content += f"**ID**: {author.get('id', 'N/A')}\n"
+            content += f"**ID**: {self._safe_get_str(author, 'id', 'N/A')}\n"
+            content += self._format_author_basic_info(author)
             
-            if author.get('email'):
-                content += f"**邮箱**: {author['email']}\n"
+            # 联系信息
+            email = self._safe_get_str(author, 'email')
+            if email:
+                content += f"**邮箱**: {email}\n"
             
-            if author.get('affiliation'):
-                content += f"**机构**: {author['affiliation']}\n"
-            
-            if author.get('research_interests'):
-                interests = author['research_interests']
-                if isinstance(interests, list):
-                    content += f"**研究兴趣**: {', '.join(interests)}\n"
-                else:
-                    content += f"**研究兴趣**: {interests}\n"
+            # 研究兴趣
+            interests = author.get('research_interests')
+            if interests:
+                content += f"**研究兴趣**: {', '.join(interests)}\n"
             
             # 学术指标
             content += "\n### 学术指标\n"
-            if author.get('h_index') is not None:
-                content += f"**H指数**: {author['h_index']}\n"
-            if author.get('citation_count') is not None:
-                content += f"**总引用数**: {author['citation_count']}\n"
-            if author.get('paper_count') is not None:
-                content += f"**论文数量**: {author['paper_count']}\n"
+            h_index = self._safe_get_int(author, 'h_index')
+            citation_count = self._safe_get_int(author, 'citation_count')
+            paper_count = self._safe_get_int(author, 'paper_count')
             
-            # 合作者信息
-            if author.get('coauthors'):
-                content += "\n### 主要合作者\n"
-                coauthors = author['coauthors'][:5]  # 只显示前5个
-                for coauthor in coauthors:
-                    content += f"- **{coauthor.get('name', 'Unknown')}**"
-                    if coauthor.get('collaboration_count'):
-                        content += f" (合作 {coauthor['collaboration_count']} 次)"
-                    if coauthor.get('affiliation'):
-                        content += f" - {coauthor['affiliation']}"
+            if h_index > 0:
+                content += f"**H指数**: {h_index}\n"
+            if citation_count > 0:
+                content += f"**总引用数**: {citation_count}\n"
+            if paper_count > 0:
+                content += f"**论文数量**: {paper_count}\n"
+            
+            # 合作网络
+            coauthors = author.get('coauthors', [])
+            if coauthors:
+                content += f"\n### 合作网络 ({len(coauthors)} 位合作者)\n"
+                for i, coauthor in enumerate(coauthors[:10], 1):  # 显示前10位
+                    coauthor_name = self._safe_get_str(coauthor, 'name')
+                    collaboration_count = self._safe_get_int(coauthor, 'collaboration_count')
+                    affiliation = self._safe_get_str(coauthor, 'affiliation')
+                    
+                    content += f"{i}. **{coauthor_name}**"
+                    if collaboration_count > 0:
+                        content += f" (合作{collaboration_count}次)"
+                    if affiliation:
+                        content += f" - {affiliation}"
                     content += "\n"
             
             content += "\n---\n\n"
@@ -243,33 +244,43 @@ class AuthorTools:
     def _format_author_papers(self, raw_result: Dict[str, Any], author_id: str) -> str:
         """格式化作者论文"""
         papers = raw_result.get("papers", [])
+        count = raw_result.get("count", len(papers))
         
-        content = f"# 作者论文列表\n\n"
+        content = f"# 作者发表论文\n\n"
         content += f"**作者ID**: {author_id}\n"
-        content += f"**论文数量**: {len(papers)}\n\n"
+        content += f"**论文总数**: {count}\n\n"
         
         if not papers:
             content += "该作者暂无论文记录。\n"
             return content
         
+        content += f"## 论文列表 (显示前{len(papers)}篇)\n\n"
+        
         for i, paper in enumerate(papers, 1):
-            content += f"## {i}. {paper.get('title', 'Unknown Title')}\n\n"
+            title = self._safe_get_str(paper, 'title', 'Unknown Title')
+            content += f"### {i}. {title}\n\n"
             
             # 发表信息
-            if paper.get('published_at'):
-                content += f"**发表时间**: {paper['published_at'][:10]}\n"
+            published_at = self._safe_get_str(paper, 'published_at')
+            if published_at:
+                content += f"**发表时间**: {self._format_date(published_at)}\n"
             
             # 作者顺序
-            if paper.get('author_order'):
-                content += f"**作者顺序**: 第 {paper['author_order']} 作者"
-                if paper.get('is_corresponding'):
-                    content += " (通讯作者)"
-                content += "\n"
+            author_order = self._safe_get_int(paper, 'author_order')
+            if author_order > 0:
+                content += f"**作者顺序**: 第{author_order}作者\n"
+            
+            # 是否通讯作者
+            is_corresponding = paper.get('is_corresponding')
+            if is_corresponding:
+                content += f"**通讯作者**: 是\n"
             
             # 论文ID
-            if paper.get('id'):
-                content += f"**论文ID**: {paper['id']}\n"
+            paper_id = self._safe_get_str(paper, 'id')
+            if paper_id:
+                content += f"**论文ID**: {paper_id}\n"
             
-            content += "\n---\n\n"
+            content += "\n"
         
         return content
+
