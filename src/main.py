@@ -8,6 +8,15 @@ import sys
 import signal
 from typing import Optional
 import structlog
+from pathlib import Path
+import os
+
+# 添加项目根目录到 Python 路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# 确保当前工作目录是项目根目录
+os.chdir(project_root)
 
 from src.server import AcademicMCPServer
 from src.utils.logging_config import setup_logging

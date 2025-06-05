@@ -15,7 +15,7 @@ from mcp.types import (
 from src.config import settings
 from src.clients.go_client import GoServiceClient
 from src.services.data_processor import DataProcessor
-from src.mcp.tools import create_tool_registry, get_all_tool_definitions
+from src.core.tools import create_tool_registry, get_all_tool_definitions
 
 logger = structlog.get_logger()
 
