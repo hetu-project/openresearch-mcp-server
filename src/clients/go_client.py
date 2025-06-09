@@ -136,6 +136,9 @@ class GoServiceClient:
                 
                 try:
                     result = await response.json()
+                                    # 添加详细的响应调试
+                    print(f"DEBUG: Response status: {response.status}")
+                    print(f"DEBUG: Response content: {json.dumps(result, ensure_ascii=False, indent=2)}")
                     logger.debug(
                         "Go service request successful",
                         url=url,
@@ -209,25 +212,32 @@ class GoServiceClient:
             logger.error("Paper search failed", error=str(e))
             raise
     
-    async def get_paper_details(self, paper_ids: List[str]) -> Dict[str, Any]:
-        """获取论文详情 - 通过ID搜索"""
-        logger.info("Getting paper details via Go service", paper_ids=paper_ids)
+    async def get_paper_details(self, titles: List[str]) -> Dict[str, Any]:
+        """获取论文详情 - 通过标题搜索"""
+        logger.info("Getting paper details via titles", titles=titles)
         
         try:
             # 批量获取论文详情
             all_papers = []
-            for paper_id in paper_ids:
+            
+            for title in titles:
+                # 使用标题进行精确搜索
                 result = await self._make_request(
                     method="GET",
                     endpoint="/papers",
-                    params={"id": paper_id}
+                    params={"title": title, "limit": 5}
                 )
-                if result.get("papers"):
-                    all_papers.extend(result["papers"])
+                
+                papers = result.get("papers", [])
+                if papers:
+                    # 寻找最佳匹配
+                    best_match = self._find_best_title_match(title, papers)
+                    if best_match:
+                        all_papers.append(best_match)
             
             logger.info(
                 "Paper details retrieved",
-                requested_count=len(paper_ids),
+                requested_count=len(titles),
                 returned_count=len(all_papers)
             )
             
@@ -236,6 +246,26 @@ class GoServiceClient:
         except Exception as e:
             logger.error("Get paper details failed", error=str(e))
             raise
+
+    def _find_best_title_match(self, target_title: str, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """找到标题最匹配的论文"""
+        target_lower = target_title.lower().strip()
+        
+        # 完全匹配
+        for paper in papers:
+            paper_title = paper.get('title', '').lower().strip()
+            if paper_title == target_lower:
+                return paper
+        
+        # 包含匹配
+        for paper in papers:
+            paper_title = paper.get('title', '').lower().strip()
+            if target_lower in paper_title or paper_title in target_lower:
+                return paper
+        
+        # 返回第一个结果
+        return papers[0] if papers else None
+
     
     async def get_paper_citations(self, paper_id: str) -> Dict[str, Any]:
         """获取论文引用关系 - GET /papers/:id/citations"""
@@ -246,6 +276,19 @@ class GoServiceClient:
                 method="GET",
                 endpoint=f"/papers/{paper_id}/citations"
             )
+            
+            # 验证返回数据结构
+            if not isinstance(result, dict):
+                raise ValueError("Invalid response format")
+            
+            # 确保必要字段存在
+            result.setdefault('citing_papers', [])
+            result.setdefault('cited_papers', [])
+            result.setdefault('incoming_citations_count', len(result.get('citing_papers', [])))
+            result.setdefault('outgoing_citations_count', len(result.get('cited_papers', [])))
+            result.setdefault('total_citations_count', 
+                            result.get('incoming_citations_count', 0) + 
+                            result.get('outgoing_citations_count', 0))
             
             logger.info(
                 "Paper citations retrieved",
@@ -301,9 +344,37 @@ class GoServiceClient:
                 params={"time": time_window, "limit": limit}
             )
             
+            # 验证返回数据结构
+            if not isinstance(result, dict):
+                raise ValueError("Invalid response format")
+            
+            # 确保必要字段存在
+            result.setdefault('trending_papers', [])
+            result.setdefault('count', len(result.get('trending_papers', [])))
+            result.setdefault('time_window', time_window)
+            
+            # 验证每篇论文的数据完整性
+            papers = result.get('trending_papers', [])
+            for paper in papers:
+                # 确保基本字段存在
+                paper.setdefault('id', '')
+                paper.setdefault('title', 'Unknown Title')
+                paper.setdefault('abstract', '')
+                paper.setdefault('authors', [])
+                paper.setdefault('keywords', [])
+                paper.setdefault('citations', 0)
+                paper.setdefault('popularity_score', 0.0)
+                paper.setdefault('published_year', 0)
+                paper.setdefault('doi', '')
+                paper.setdefault('url', '')
+                paper.setdefault('venue_name', '')
+                paper.setdefault('venue_id', '')
+                paper.setdefault('img_url', '')
+            
             logger.info(
                 "Trending papers retrieved",
-                count=len(result.get("trending_papers", []))
+                count=len(result.get("trending_papers", [])),
+                time_window=result.get("time_window")
             )
             
             return result
@@ -311,6 +382,7 @@ class GoServiceClient:
         except Exception as e:
             logger.error("Get trending papers failed", error=str(e))
             raise
+
     
     async def get_top_keywords(self) -> Dict[str, Any]:
         """获取热门话题 - GET /papers/keywords/top"""
@@ -321,6 +393,20 @@ class GoServiceClient:
                 method="GET",
                 endpoint="/papers/keywords/top"
             )
+            
+            # 验证返回数据结构
+            if not isinstance(result, dict):
+                raise ValueError("Invalid response format")
+            
+            # 确保必要字段存在
+            result.setdefault('keywords', [])
+            result.setdefault('count', len(result.get('keywords', [])))
+            
+            # 验证每个关键词的数据完整性
+            keywords = result.get('keywords', [])
+            for keyword_data in keywords:
+                keyword_data.setdefault('keyword', '')
+                keyword_data.setdefault('paper_count', 0)
             
             logger.info(
                 "Top keywords retrieved",
@@ -338,25 +424,38 @@ class GoServiceClient:
     async def search_authors(
         self,
         query: Optional[str] = None,
+        author_id: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 20
     ) -> Dict[str, Any]:
-        """搜索作者 - GET /authors"""
+        """搜索作者 - 支持按姓名、ID或其他条件搜索 - GET /authors"""
         logger.info(
             "Searching authors via Go service",
             query=query,
+            author_id=author_id,
             filters=filters,
             limit=limit
         )
         
         params = {}
-        if query:
+        
+        # 按 ID 搜索（优先级最高）
+        if author_id:
+            params["id"] = author_id
+        # 按姓名搜索
+        elif query:
             params["name"] = query
+        
+        # 其他过滤条件
         if filters:
             if filters.get("affiliation"):
                 params["affiliation"] = filters["affiliation"]
             if filters.get("research_area"):
                 params["interest"] = filters["research_area"]
+        
+        # 添加 limit（只在非 ID 搜索时使用，因为 ID 搜索通常返回单个结果）
+        if not author_id:
+            params["limit"] = limit
         
         try:
             result = await self._make_request(
@@ -374,33 +473,6 @@ class GoServiceClient:
             
         except Exception as e:
             logger.error("Author search failed", error=str(e))
-            raise
-    
-    async def get_author_details(self, author_ids: List[str]) -> Dict[str, Any]:
-        """获取作者详情 - 通过ID搜索"""
-        logger.info("Getting author details via Go service", author_ids=author_ids)
-        
-        try:
-            all_authors = []
-            for author_id in author_ids:
-                result = await self._make_request(
-                    method="GET",
-                    endpoint="/authors",
-                    params={"id": author_id}
-                )
-                if result.get("authors"):
-                    all_authors.extend(result["authors"])
-            
-            logger.info(
-                "Author details retrieved",
-                requested_count=len(author_ids),
-                returned_count=len(all_authors)
-            )
-            
-            return {"authors": all_authors}
-            
-        except Exception as e:
-            logger.error("Get author details failed", error=str(e))
             raise
     
     async def get_author_papers(self, author_id: str) -> Dict[str, Any]:
