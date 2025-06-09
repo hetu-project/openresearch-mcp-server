@@ -1,28 +1,29 @@
-# src/mcp/tools/network_tools.py
+# src/core/tools/network_tools.py
 from typing import Dict, Any, List
 import structlog
 from mcp.types import Tool, TextContent
-
+import json
 from .base_tools import BaseTools
 from src.utils.error_handler import handle_tool_error
 
 logger = structlog.get_logger()
 
 class NetworkTools(BaseTools):
-    """网络分析工具 - MVP版本"""
+    """网络分析工具 - 支持JSON格式返回"""
     
     def get_tools(self) -> List[Tool]:
         """获取工具定义"""
         return [
             Tool(
                 name="get_citation_network",
-                description="获取论文引用网络",
+                description="获取论文引用网络，分析论文之间的引用关系",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "paper_id": {
-                            "type": "string",
-                            "description": "种子论文ID"
+                        "seed_papers": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "种子论文ID列表"
                         },
                         "depth": {
                             "type": "integer",
@@ -31,72 +32,97 @@ class NetworkTools(BaseTools):
                             "default": 2,
                             "description": "网络深度"
                         },
+                        "direction": {
+                            "type": "string",
+                            "enum": ["incoming", "outgoing", "both"],
+                            "default": "both",
+                            "description": "引用方向：incoming(被引用), outgoing(引用), both(双向)"
+                        },
                         "max_nodes": {
                             "type": "integer",
                             "minimum": 10,
                             "maximum": 200,
                             "default": 50,
                             "description": "最大节点数"
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["markdown", "json"],
+                            "default": "markdown",
+                            "description": "返回格式：markdown(格式化显示) 或 json(原始数据)"
                         }
                     },
-                    "required": ["paper_id"]
+                    "required": ["seed_papers"]
                 }
             ),
             Tool(
                 name="get_collaboration_network",
-                description="获取作者合作网络",
+                description="获取作者合作网络，分析作者之间的合作关系",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "author_id": {
-                            "type": "string",
-                            "description": "种子作者ID"
+                        "authors": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "作者ID列表"
                         },
-                        "depth": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 2,
-                            "default": 1,
-                            "description": "网络深度"
+                        "time_range": {
+                            "type": "string",
+                            "description": "时间范围，格式：YYYY-YYYY"
                         },
                         "max_nodes": {
                             "type": "integer",
                             "minimum": 10,
-                            "maximum": 100,
-                            "default": 30,
+                            "maximum": 200,
+                            "default": 50,
                             "description": "最大节点数"
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["markdown", "json"],
+                            "default": "markdown",
+                            "description": "返回格式：markdown(格式化显示) 或 json(原始数据)"
                         }
                     },
-                    "required": ["author_id"]
+                    "required": ["authors"]
                 }
             )
         ]
     
     @handle_tool_error
     async def get_citation_network(self, arguments: Dict[str, Any]) -> List[TextContent]:
-        """获取引用网络工具"""
-        paper_id = arguments["paper_id"]
+        """获取引用网络工具 - 支持JSON格式"""
+        seed_papers = arguments["seed_papers"]
         depth = arguments.get("depth", 2)
+        direction = arguments.get("direction", "both")
         max_nodes = arguments.get("max_nodes", 50)
-        
+        return_format = arguments.get("format", "markdown")
+
         logger.info(
-            "Getting citation network",
-            paper_id=paper_id,
-            depth=depth,
-            max_nodes=max_nodes
+            "Getting citation network", 
+            seed_papers=seed_papers, 
+            depth=depth, 
+            direction=direction,
+            max_nodes=max_nodes,
+            format=return_format
         )
         
         try:
-            # 使用Go客户端的网络接口
             raw_result = await self.go_client.get_citation_network(
-                seed_papers=[paper_id],
+                seed_papers=seed_papers,
                 depth=depth,
+                direction=direction,
                 max_nodes=max_nodes
             )
             
-            content = self._format_citation_network(raw_result, paper_id)
-            return [TextContent(type="text", text=content)]
-            
+            if return_format == "json":
+                # 返回原始 JSON
+                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+            else:
+                # 返回格式化的 Markdown（默认）
+                content = self._format_citation_network(raw_result, seed_papers)
+                return [TextContent(type="text", text=content)]
+              
         except Exception as e:
             logger.error("Get citation network failed", error=str(e))
             error_content = self._format_error_response(str(e), "获取引用网络")
@@ -104,26 +130,33 @@ class NetworkTools(BaseTools):
     
     @handle_tool_error
     async def get_collaboration_network(self, arguments: Dict[str, Any]) -> List[TextContent]:
-        """获取合作网络工具"""
-        author_id = arguments["author_id"]
-        depth = arguments.get("depth", 1)
-        max_nodes = arguments.get("max_nodes", 30)
+        """获取合作网络工具 - 支持JSON格式"""
+        authors = arguments["authors"]
+        time_range = arguments.get("time_range")
+        max_nodes = arguments.get("max_nodes", 50)
+        return_format = arguments.get("format", "markdown")
         
         logger.info(
-            "Getting collaboration network",
-            author_id=author_id,
-            depth=depth,
-            max_nodes=max_nodes
+            "Getting collaboration network", 
+            authors=authors, 
+            time_range=time_range,
+            max_nodes=max_nodes,
+            format=return_format
         )
         
         try:
-            # 使用Go客户端的网络接口
             raw_result = await self.go_client.get_collaboration_network(
-                authors=[author_id]
+                authors=authors,
+                time_range=time_range
             )
             
-            content = self._format_collaboration_network(raw_result, author_id)
-            return [TextContent(type="text", text=content)]
+            if return_format == "json":
+                # 返回原始 JSON
+                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+            else:
+                # 返回格式化的 Markdown（默认）
+                content = self._format_collaboration_network(raw_result, authors)
+                return [TextContent(type="text", text=content)]
             
         except Exception as e:
             logger.error("Get collaboration network failed", error=str(e))
