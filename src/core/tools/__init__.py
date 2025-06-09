@@ -60,7 +60,6 @@ def create_tool_registry(go_client, data_processor):
     # Register author tools
     author_tools = tools["author"]
     registry["search_authors"] = author_tools.search_authors
-    registry["get_author_details"] = author_tools.get_author_details
     registry["get_author_papers"] = author_tools.get_author_papers
     
     # Register paper tools
@@ -70,9 +69,9 @@ def create_tool_registry(go_client, data_processor):
     registry["get_paper_citations"] = paper_tools.get_paper_citations
     
     # Register network tools
-    network_tools = tools["network"]
-    registry["get_citation_network"] = network_tools.get_citation_network
-    registry["get_collaboration_network"] = network_tools.get_collaboration_network
+    # network_tools = tools["network"]
+    # registry["get_citation_network"] = network_tools.get_citation_network
+    # registry["get_collaboration_network"] = network_tools.get_collaboration_network
     
     # Register trend tools
     trend_tools = tools["trend"]
@@ -105,18 +104,18 @@ TOOL_CATEGORIES = {
     "author": {
         "name": "Author Tools",
         "description": "Tools for searching and analyzing academic authors",
-        "tools": ["search_authors", "get_author_details", "get_author_papers"]
+        "tools": ["search_authors", "get_author_papers"]
     },
     "paper": {
         "name": "Paper Tools", 
         "description": "Tools for searching and analyzing academic papers",
         "tools": ["search_papers", "get_paper_details", "get_paper_citations"]
     },
-    "network": {
-        "name": "Network Analysis Tools",
-        "description": "Tools for analyzing citation and collaboration networks",
-        "tools": ["get_citation_network", "get_collaboration_network"]
-    },
+    # "network": {
+    #     "name": "Network Analysis Tools",
+    #     "description": "Tools for analyzing citation and collaboration networks",
+    #     "tools": ["get_citation_network", "get_collaboration_network"]
+    # },
     "trend": {
         "name": "Trend Analysis Tools",
         "description": "Tools for analyzing research trends and hot topics",
@@ -144,7 +143,6 @@ def list_all_tools():
     tool_descriptions = {
         # Author tools
         "search_authors": "Search for academic authors by name, affiliation, or research area",
-        "get_author_details": "Get detailed information about specific authors including metrics and collaborations",
         "get_author_papers": "Get all papers published by a specific author",
         
         # Paper tools
@@ -153,8 +151,8 @@ def list_all_tools():
         "get_paper_citations": "Get citation relationships for a specific paper (citing and cited papers)",
         
         # Network tools
-        "get_citation_network": "Generate citation network graph showing paper relationships",
-        "get_collaboration_network": "Generate collaboration network graph showing author relationships",
+        # "get_citation_network": "Generate citation network graph showing paper relationships",
+        # "get_collaboration_network": "Generate collaboration network graph showing author relationships",
         
         # Trend tools
         "get_trending_papers": "Get currently trending/popular papers in specified time window",

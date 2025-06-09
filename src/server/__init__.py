@@ -23,7 +23,6 @@ SUPPORTED_TOOLS = [
     "search_papers",           # 搜索论文
     "get_paper_details",       # 获取论文详情
     "search_authors",          # 搜索作者
-    "get_author_details",      # 获取作者详情
     "get_citation_network",    # 获取引用网络
     "get_collaboration_network", # 获取合作网络
     "get_research_trends",     # 获取研究趋势
