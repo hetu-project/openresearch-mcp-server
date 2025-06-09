@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     go_service_timeout: int = Field(default=30, description="Go服务超时时间(秒)")
     
     # 日志配置
-    log_level: str = Field(default="INFO", description="日志级别")
+    log_level: str = Field(default="DEBUG", description="日志级别")
     log_format: str = Field(default="json", description="日志格式")
     
     # API配置
