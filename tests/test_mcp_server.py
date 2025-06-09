@@ -136,7 +136,7 @@ async def test_search_authors(server: AcademicMCPServer):
             preview = text_result[:200] + "..." if len(text_result) > 200 else text_result
             print(f"   Preview: {preview}")
         else:
-            print("❌ Search authors returned empty result")
+            print("❌ Search authors returned empty result") 
             return False
             
         return True

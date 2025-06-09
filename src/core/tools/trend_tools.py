@@ -204,7 +204,7 @@ class TrendTools(BaseTools):
         time_range = arguments.get("time_range", "2020-2024")
         metrics = arguments.get("metrics", ["publication_count"])
         granularity = arguments.get("granularity", "year")
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info(
             "Analyzing domain trends", 
@@ -223,13 +223,13 @@ class TrendTools(BaseTools):
                 granularity=granularity
             )
             
-            if return_format == "json":
+            # if return_format == "json":
                 # 返回原始 JSON
-                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
-            else:
-                # 返回格式化的 Markdown（默认）
-                content = self._format_domain_trends(raw_result, domain)
-                return [TextContent(type="text", text=content)]
+            return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+            # else:
+            #     # 返回格式化的 Markdown（默认）
+            #     content = self._format_domain_trends(raw_result, domain)
+            #     return [TextContent(type="text", text=content)]
             
         except Exception as e:
             logger.error("Analyze domain trends failed", error=str(e))
@@ -256,13 +256,13 @@ class TrendTools(BaseTools):
                 analysis_dimensions=analysis_dimensions
             )
             
-            if return_format == "json":
-                # 返回原始 JSON
-                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
-            else:
-                # 返回格式化的 Markdown（默认）
-                content = self._format_research_landscape(raw_result, domain)
-                return [TextContent(type="text", text=content)]
+            # if return_format == "json":
+            # 返回原始 JSON
+            return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+            # else:
+            #     # 返回格式化的 Markdown（默认）
+            #     content = self._format_research_landscape(raw_result, domain)
+            #     return [TextContent(type="text", text=content)]
             
         except Exception as e:
             logger.error("Analyze research landscape failed", error=str(e))

@@ -30,7 +30,7 @@ class InteractiveTest:
         except Exception as e:
             print(f"❌ Failed to initialize server: {e}")
             raise
-    
+        
     async def show_menu(self):
         """显示菜单"""
         print("\n" + "=" * 50)
@@ -39,14 +39,13 @@ class InteractiveTest:
         print("1. List all tools")
         print("2. Search papers")
         print("3. Search authors") 
-        print("4. Get author details")
-        print("5. Get author papers")
-        print("6. Get paper details")
-        print("7. Get paper citations")  # 新增
-        print("8. Get trending papers")
-        print("9. Get top keywords")
-        print("10. Server health check")
-        print("11. Server info")
+        print("4. Get author papers")
+        print("5. Get paper details")
+        print("6. Get paper citations")  # 新增
+        print("7. Get trending papers")
+        print("8. Get top keywords")
+        print("9. Server health check")
+        print("10. Server info")
         print("0. Exit")
         print("-" * 50)
     
@@ -188,53 +187,53 @@ class InteractiveTest:
         except Exception as e:
             print(f"❌ Error: {e}")
     
-    async def get_author_details(self):
-        """获取作者详情"""
-        if not self.server:
-            print("❌ Server not initialized")
-            return
+    # async def get_author_details(self):
+    #     """获取作者详情"""
+    #     if not self.server:
+    #         print("❌ Server not initialized")
+    #         return
             
-        print("\n👤 Get Author Details")
-        print("You can enter multiple author IDs separated by commas")
-        print("Example: bb72631c-aae9-43a8-a48c-c9ee7c6e6768")
+    #     print("\n👤 Get Author Details")
+    #     print("You can enter multiple author IDs separated by commas")
+    #     print("Example: bb72631c-aae9-43a8-a48c-c9ee7c6e6768")
         
-        author_ids_input = input("\n📝 Enter author ID(s): ").strip()
-        if not author_ids_input:
-            print("❌ Author ID cannot be empty")
-            return
+    #     author_ids_input = input("\n📝 Enter author ID(s): ").strip()
+    #     if not author_ids_input:
+    #         print("❌ Author ID cannot be empty")
+    #         return
         
-        # 处理多个ID（用逗号分隔）
-        author_ids = [id.strip() for id in author_ids_input.split(',') if id.strip()]
+    #     # 处理多个ID（用逗号分隔）
+    #     author_ids = [id.strip() for id in author_ids_input.split(',') if id.strip()]
         
-        if not author_ids:
-            print("❌ No valid author IDs provided")
-            return
+    #     if not author_ids:
+    #         print("❌ No valid author IDs provided")
+    #         return
         
-        # 选择返回格式
-        print("\nChoose return format:")
-        print("1. Markdown (formatted display)")
-        print("2. JSON (raw data)")
-        format_choice = input("Enter choice (1 or 2, default 1): ").strip()
-        return_format = "json" if format_choice == "2" else "markdown"
+    #     # 选择返回格式
+    #     print("\nChoose return format:")
+    #     print("1. Markdown (formatted display)")
+    #     print("2. JSON (raw data)")
+    #     format_choice = input("Enter choice (1 or 2, default 1): ").strip()
+    #     return_format = "json" if format_choice == "2" else "markdown"
         
-        print(f"\n👤 Getting details for author(s): {', '.join(author_ids)}")
-        print(f"Format: {return_format}")
+    #     print(f"\n👤 Getting details for author(s): {', '.join(author_ids)}")
+    #     print(f"Format: {return_format}")
         
-        try:
-            result = await self._call_tool_directly(
-                "get_author_details",
-                {
-                    "author_ids": author_ids,
-                    "format": return_format
-                }
-            )
+    #     try:
+    #         result = await self._call_tool_directly(
+    #             "get_author_details",
+    #             {
+    #                 "author_ids": author_ids,
+    #                 "format": return_format
+    #             }
+    #         )
             
-            print("\n✅ Results:")
-            text_result = self._extract_text_from_content(result)
-            print(text_result)
+    #         print("\n✅ Results:")
+    #         text_result = self._extract_text_from_content(result)
+    #         print(text_result)
                 
-        except Exception as e:
-            print(f"❌ Error: {e}")
+    #     except Exception as e:
+    #         print(f"❌ Error: {e}")
     
     async def get_author_papers(self):
         """获取作者论文"""
@@ -821,20 +820,18 @@ class InteractiveTest:
                     elif choice == "3":
                         await self.search_authors()
                     elif choice == "4":
-                        await self.get_author_details()
-                    elif choice == "5":
                         await self.get_author_papers()
-                    elif choice == "6":
+                    elif choice == "5":
                         await self.get_paper_details()
+                    elif choice == "6":
+                        await self.get_paper_citations()
                     elif choice == "7":
-                        await self.get_paper_citations()  # 新增
-                    elif choice == "8":
                         await self.get_trending_papers()
-                    elif choice == "9":
+                    elif choice == "8":
                         await self.get_top_keywords()
-                    elif choice == "10":
+                    elif choice == "9":
                         await self.server_health_check()
-                    elif choice == "11":
+                    elif choice == "10":
                         await self.server_info()
                     elif choice == "99":  # 隐藏的高级选项
                         while True:

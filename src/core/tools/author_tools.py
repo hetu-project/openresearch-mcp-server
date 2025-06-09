@@ -77,43 +77,7 @@ class AuthorTools(BaseTools):
                 }
             )
         ]
-    
-    @handle_tool_error
-    async def search_authors(self, arguments: Dict[str, Any]) -> List[TextContent]:
-        """搜索作者工具 - 支持姓名和ID搜索"""
-        query = arguments.get("query")
-        author_id = arguments.get("author_id")
-        filters = arguments.get("filters", {})
-        limit = arguments.get("limit", 20)
-        return_format = arguments.get("format", "markdown")
 
-        if not query and not author_id:
-            return [TextContent(type="text", text="❌ 请提供查询条件（姓名或ID）")]
-
-        logger.info("Searching authors", query=query, author_id=author_id, filters=filters, format=return_format)
-        
-        try:
-            raw_result = await self.go_client.search_authors(
-                query=query,
-                author_id=author_id,
-                filters=filters,
-                limit=limit
-            )
-            
-            if return_format == "json":
-                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
-            else:
-                # 根据搜索类型选择格式化方法
-                if author_id:
-                    content = self._format_author_details(raw_result)
-                else:
-                    content = self._format_author_search_result(raw_result, query)
-                return [TextContent(type="text", text=content)]
-            
-        except Exception as e:
-            logger.error("Author search failed", error=str(e))
-            error_content = self._format_error_response(str(e), "作者搜索")
-            return [TextContent(type="text", text=error_content)]
     
     @handle_tool_error
     async def get_author_papers(self, arguments: Dict[str, Any]) -> List[TextContent]:
@@ -139,132 +103,6 @@ class AuthorTools(BaseTools):
             logger.error("Get author papers failed", error=str(e))
             error_content = self._format_error_response(str(e), "获取作者论文")
             return [TextContent(type="text", text=error_content)]
-    
-    # 格式化方法保持不变...
-    def _format_author_search_result(self, raw_result: Dict[str, Any], query: str) -> str:
-        """格式化作者搜索结果"""
-        authors = raw_result.get("authors", [])
-        count = raw_result.get("count", len(authors))
-        
-        if not authors:
-            return self._format_empty_result(query, "作者")
-        
-        content = self._format_list_header("作者搜索结果", count, query)
-        
-        for i, author in enumerate(authors, 1):
-            name = self._safe_get_str(author, 'name', 'Unknown Author')
-            content += f"## {i}. {name}\n\n"
-            
-            # 基本信息
-            content += self._format_author_basic_info(author)
-            
-            # 研究兴趣
-            interests = author.get('research_interests')
-            if interests:
-                content += f"**研究兴趣**: {', '.join(interests)}\n"
-            
-            # 邮箱
-            email = self._safe_get_str(author, 'email')
-            if email:
-                content += f"**邮箱**: {email}\n"
-            
-            # 合作者信息
-            coauthors = author.get('coauthors', [])
-            if coauthors:
-                content += f"**主要合作者**: {len(coauthors)} 位\n"
-                # 显示前3位合作者
-                for j, coauthor in enumerate(coauthors[:3], 1):
-                    coauthor_name = self._safe_get_str(coauthor, 'name')
-                    collaboration_count = self._safe_get_int(coauthor, 'collaboration_count')
-                    if coauthor_name:
-                        content += f"  {j}. {coauthor_name}"
-                        if collaboration_count > 0:
-                            content += f" (合作{collaboration_count}次)"
-                        content += "\n"
-            
-            # 作者ID
-            content += f"**ID**: {self._safe_get_str(author, 'id', 'N/A')}\n"
-            content += "\n---\n\n"
-        
-        return content
-    
-    def _format_author_details(self, raw_result: Dict[str, Any]) -> str:
-        """格式化作者详情"""
-        if not raw_result:
-            return "❌ 未收到任何数据"
-        
-        authors = raw_result.get("authors", [])
-        if not authors:
-            return "❌ 未找到作者信息"
-        
-        content_parts = []
-        
-        for i, author in enumerate(authors, 1):
-            author_info = []
-            author_info.append(f"# 👤 作者详情 {i}")
-            author_info.append("")
-            
-            # 基本信息
-            author_info.append(f"## 基本信息")
-            author_info.append(f"**姓名**: {self._safe_get_str(author, 'name', 'Unknown')}")
-            author_info.append(f"**ID**: `{self._safe_get_str(author, 'id', 'N/A')}`")
-            author_info.append(f"**机构**: {self._safe_get_str(author, 'affiliation', 'N/A')}")
-            
-            email = self._safe_get_str(author, 'email')
-            if email:
-                author_info.append(f"**邮箱**: {email}")
-            
-            # 学术指标
-            author_info.append("")
-            author_info.append(f"## 📊 学术指标")
-            author_info.append(f"**论文数量**: {self._safe_get_int(author, 'paper_count')} 篇")
-            author_info.append(f"**引用数量**: {self._safe_get_int(author, 'citation_count')} 次")
-            author_info.append(f"**H-index**: {self._safe_get_int(author, 'h_index')}")
-            
-            # 研究兴趣
-            interests = author.get('research_interests')
-            if interests:
-                author_info.append("")
-                author_info.append(f"## 🔬 研究兴趣")
-                if isinstance(interests, list):
-                    author_info.append(f"{', '.join(interests)}")
-                else:
-                    author_info.append(f"{interests}")
-            
-            # 合作者信息
-            coauthors = author.get('coauthors', [])
-            if coauthors:
-                author_info.append("")
-                author_info.append(f"## 🤝 合作网络 ({len(coauthors)} 位合作者)")
-                
-                # 按合作次数排序
-                sorted_coauthors = sorted(
-                    coauthors, 
-                    key=lambda x: self._safe_get_int(x, 'collaboration_count'), 
-                    reverse=True
-                )
-                
-                for j, coauthor in enumerate(sorted_coauthors[:10], 1):  # 显示前10位
-                    collab_count = self._safe_get_int(coauthor, 'collaboration_count')
-                    coauthor_name = self._safe_get_str(coauthor, 'name', 'Unknown')
-                    coauthor_id = self._safe_get_str(coauthor, 'id', 'N/A')
-                    
-                    author_info.append(f"{j:2d}. **{coauthor_name}** - {collab_count}次合作")
-                    author_info.append(f"     ID: `{coauthor_id}`")
-                    
-                    affiliation = self._safe_get_str(coauthor, 'affiliation')
-                    if affiliation:
-                        author_info.append(f"     机构: {affiliation}")
-                    author_info.append("")  # 添加空行分隔
-                
-                if len(coauthors) > 10:
-                    author_info.append(f"... 还有 {len(coauthors) - 10} 位合作者")
-            
-            content_parts.append("\n".join(author_info))
-        
-        # 添加总结信息
-        summary = f"📊 **查询结果**: 找到 {len(authors)} 位作者的详细信息\n"
-        return summary + "\n" + ("\n" + "="*60 + "\n").join(content_parts)
     
     
     def _format_author_papers(self, raw_result: Dict[str, Any], author_id: str, limit: int) -> str:
@@ -361,3 +199,164 @@ class AuthorTools(BaseTools):
         return content
 
 
+    # 修改 search_authors 方法中的格式化逻辑
+    @handle_tool_error
+    async def search_authors(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """搜索作者工具 - 支持姓名和ID搜索"""
+        query = arguments.get("query")
+        author_id = arguments.get("author_id")
+        filters = arguments.get("filters", {})
+        limit = arguments.get("limit", 20)
+        return_format = arguments.get("format", "json")
+
+        if not query and not author_id:
+            return [TextContent(type="text", text="❌ 请提供查询条件（姓名或ID）")]
+
+        logger.info("Searching authors IN AUTHOR TOOL", query=query, author_id=author_id, filters=filters, format=return_format)
+        
+        try:
+            raw_result = await self.go_client.search_authors(
+                query=query,
+                author_id=author_id,
+                filters=filters,
+                limit=limit
+            )
+            
+            if return_format == "json":
+                json_str = json.dumps(raw_result, ensure_ascii=False, indent=2)
+                logger.info("Returning JSON format", json_data=json_str)
+                return [TextContent(type="text", text=json_str)]
+            else:
+                # 构建搜索条件描述
+                if query:
+                    search_term = str(query)
+                elif author_id:
+                    search_term = f"ID: {str(author_id)}"
+                else:
+                    search_term = "未知查询条件"
+                
+                content = self._format_authors_result(raw_result, search_term)
+                logger.info("Returning Markdown format", markdown_content=content)
+                return [TextContent(type="text", text=content)]
+            
+        except Exception as e:
+            logger.error("Author search failed", error=str(e))
+            error_content = self._format_error_response(str(e), "作者搜索")
+            return [TextContent(type="text", text=error_content)]
+
+    def _format_authors_result(self, raw_result: Dict[str, Any], search_term: str) -> str:
+        """统一的作者结果格式化方法"""
+        authors = raw_result.get("authors", [])
+        count = raw_result.get("count", len(authors))
+        
+        if not authors:
+            return self._format_empty_result(search_term, "作者")
+        
+        # 如果只有一个作者，显示详细信息
+        if len(authors) == 1:
+            return self._format_single_author_details(authors[0], search_term)
+        else:
+            # 多个作者时显示列表格式
+            return self._format_multiple_authors_list(authors, count, search_term)
+
+    def _format_single_author_details(self, author: Dict[str, Any], search_term: str) -> str:
+        """格式化单个作者的详细信息"""
+        content = f"# 👤 作者详情\n\n"
+        content += f"**搜索条件**: {search_term}\n\n"
+        
+        # 基本信息
+        content += f"## 基本信息\n"
+        content += f"**姓名**: {self._safe_get_str(author, 'name', 'Unknown')}\n"
+        content += f"**ID**: `{self._safe_get_str(author, 'id', 'N/A')}`\n"
+        content += f"**机构**: {self._safe_get_str(author, 'affiliation', 'N/A')}\n"
+        
+        email = self._safe_get_str(author, 'email')
+        if email:
+            content += f"**邮箱**: {email}\n"
+        
+        # 学术指标
+        content += f"\n## 📊 学术指标\n"
+        content += f"**论文数量**: {self._safe_get_int(author, 'paper_count')} 篇\n"
+        content += f"**引用数量**: {self._safe_get_int(author, 'citation_count')} 次\n"
+        content += f"**H-index**: {self._safe_get_int(author, 'h_index')}\n"
+        
+        # 研究兴趣
+        interests = author.get('research_interests')
+        if interests:
+            content += f"\n## 🔬 研究兴趣\n"
+            if isinstance(interests, list):
+                content += f"{', '.join(interests)}\n"
+            else:
+                content += f"{interests}\n"
+        
+        # 合作者信息
+        coauthors = author.get('coauthors', [])
+        if coauthors:
+            content += f"\n## 🤝 合作网络 ({len(coauthors)} 位合作者)\n\n"
+            
+            # 按合作次数排序
+            sorted_coauthors = sorted(
+                coauthors, 
+                key=lambda x: self._safe_get_int(x, 'collaboration_count'), 
+                reverse=True
+            )
+            
+            for i, coauthor in enumerate(sorted_coauthors[:10], 1):  # 显示前10位
+                collab_count = self._safe_get_int(coauthor, 'collaboration_count')
+                coauthor_name = self._safe_get_str(coauthor, 'name', 'Unknown')
+                coauthor_id = self._safe_get_str(coauthor, 'id', 'N/A')
+                
+                content += f"{i:2d}. **{coauthor_name}** - {collab_count}次合作\n"
+                content += f"     ID: `{coauthor_id}`\n"
+                
+                affiliation = self._safe_get_str(coauthor, 'affiliation')
+                if affiliation:
+                    content += f"     机构: {affiliation}\n"
+                content += "\n"
+            
+            if len(coauthors) > 10:
+                content += f"... 还有 {len(coauthors) - 10} 位合作者\n"
+        
+        return content
+
+    def _format_multiple_authors_list(self, authors: List[Dict[str, Any]], count: int, search_term: str) -> str:
+        """格式化多个作者的列表信息"""
+        content = self._format_list_header("作者搜索结果", count, search_term)
+        
+        for i, author in enumerate(authors, 1):
+            name = self._safe_get_str(author, 'name', 'Unknown Author')
+            content += f"## {i}. {name}\n\n"
+            
+            # 基本信息
+            content += self._format_author_basic_info(author)
+            
+            # 研究兴趣
+            interests = author.get('research_interests')
+            if interests:
+                if isinstance(interests, list):
+                    content += f"**研究兴趣**: {', '.join(interests)}\n"
+                else:
+                    content += f"**研究兴趣**: {interests}\n"
+            
+            # 邮箱
+            email = self._safe_get_str(author, 'email')
+            if email:
+                content += f"**邮箱**: {email}\n"
+            
+            # 合作者信息（简化显示）
+            coauthors = author.get('coauthors', [])
+            if coauthors:
+                content += f"**合作者**: {len(coauthors)} 位"
+                # 显示前3位主要合作者
+                top_coauthors = sorted(coauthors, key=lambda x: self._safe_get_int(x, 'collaboration_count'), reverse=True)[:3]
+                if top_coauthors:
+                    names = [self._safe_get_str(c, 'name') for c in top_coauthors if self._safe_get_str(c, 'name')]
+                    if names:
+                        content += f" (主要: {', '.join(names)})"
+                content += "\n"
+            
+            # 作者ID
+            content += f"**ID**: `{self._safe_get_str(author, 'id', 'N/A')}`\n"
+            content += "\n---\n\n"
+        
+        return content

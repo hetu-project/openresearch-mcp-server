@@ -230,10 +230,11 @@ class GoServiceClient:
                 
                 papers = result.get("papers", [])
                 if papers:
-                    # 寻找最佳匹配
-                    best_match = self._find_best_title_match(title, papers)
-                    if best_match:
-                        all_papers.append(best_match)
+                    # 返回所有候选论文，让调用方决定如何选择
+                    all_papers.extend([{
+                        "search_title": title,
+                        "candidates": papers
+                    }])
             
             logger.info(
                 "Paper details retrieved",
@@ -241,32 +242,12 @@ class GoServiceClient:
                 returned_count=len(all_papers)
             )
             
-            return {"papers": all_papers}
+            return {"paper_searches": all_papers}
             
         except Exception as e:
             logger.error("Get paper details failed", error=str(e))
             raise
 
-    def _find_best_title_match(self, target_title: str, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """找到标题最匹配的论文"""
-        target_lower = target_title.lower().strip()
-        
-        # 完全匹配
-        for paper in papers:
-            paper_title = paper.get('title', '').lower().strip()
-            if paper_title == target_lower:
-                return paper
-        
-        # 包含匹配
-        for paper in papers:
-            paper_title = paper.get('title', '').lower().strip()
-            if target_lower in paper_title or paper_title in target_lower:
-                return paper
-        
-        # 返回第一个结果
-        return papers[0] if papers else None
-
-    
     async def get_paper_citations(self, paper_id: str) -> Dict[str, Any]:
         """获取论文引用关系 - GET /papers/:id/citations"""
         logger.info("Getting paper citations", paper_id=paper_id)

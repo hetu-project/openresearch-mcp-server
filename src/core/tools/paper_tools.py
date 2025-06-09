@@ -101,7 +101,7 @@ class PaperTools(BaseTools):
         query = arguments["query"]
         filters = arguments.get("filters", {})
         limit = arguments.get("limit", 20)
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
 
         logger.info("Searching papers", query=query, filters=filters, format=return_format)
         
@@ -172,20 +172,24 @@ class PaperTools(BaseTools):
         """找到标题最匹配的论文"""
         target_lower = target_title.lower().strip()
         
-        # 首先寻找完全匹配
+        # 如果没有论文，返回空字典
+        if not papers:
+            return {}
+    
+        # 完全匹配
         for paper in papers:
             paper_title = paper.get('title', '').lower().strip()
             if paper_title == target_lower:
                 return paper
         
-        # 如果没有完全匹配，寻找包含关系
+        # 包含匹配
         for paper in papers:
             paper_title = paper.get('title', '').lower().strip()
             if target_lower in paper_title or paper_title in target_lower:
                 return paper
         
-        # 如果都没有匹配，返回第一个
-        return papers[0] if papers else None
+        # 返回第一个结果
+        return papers[0]
 
     @handle_tool_error
     async def get_paper_citations(self, arguments: Dict[str, Any]) -> List[TextContent]:

@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     
     # 日志配置
     log_level: str = Field(default="DEBUG", description="日志级别")
-    log_format: str = Field(default="json", description="日志格式")
-    
+    log_file: Optional[str] = Field(default="logs/mcp_debug.log", description="LOG_FILE")
+    log_max_size: int = Field(default=10485760, description="LOG_MAX_SIZE")  # 10MB
+    log_backup_count: int = Field(default=5, description="LOG_BACKUP_COUNT")
+
     # API配置
     max_results: int = Field(default=100, description="最大返回结果数")
     cache_ttl: int = Field(default=3600, description="缓存TTL(秒)")
