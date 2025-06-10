@@ -78,6 +78,7 @@ class AcademicMCPServer:
                 
             except Exception as e:
                 error_msg = f"Tool execution failed: {str(e)}"
+                logger.debug("Tool_arguments: ", tool_arguments=arguments)
                 logger.error(
                     "Tool execution error",
                     tool_name=name,

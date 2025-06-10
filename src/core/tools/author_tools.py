@@ -224,7 +224,7 @@ class AuthorTools(BaseTools):
             
             if return_format == "json":
                 json_str = json.dumps(raw_result, ensure_ascii=False, indent=2)
-                logger.info("Returning JSON format", json_data=json_str)
+                logger.debug("Returning JSON format", json_data=json_str)
                 return [TextContent(type="text", text=json_str)]
             else:
                 # 构建搜索条件描述
@@ -236,7 +236,7 @@ class AuthorTools(BaseTools):
                     search_term = "未知查询条件"
                 
                 content = self._format_authors_result(raw_result, search_term)
-                logger.info("Returning Markdown format", markdown_content=content)
+                logger.debug("Returning Markdown format", markdown_content=content)
                 return [TextContent(type="text", text=content)]
             
         except Exception as e:

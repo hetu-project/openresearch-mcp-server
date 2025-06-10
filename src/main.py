@@ -19,11 +19,11 @@ sys.path.insert(0, str(project_root))
 os.chdir(project_root)
 
 from src.server import AcademicMCPServer
-from src.utils.logging_config import setup_logging
+from src.utils.logging_config import setup_logging,get_logger
 
 # 设置日志
 setup_logging()
-logger = structlog.get_logger()
+logger = get_logger(__name__) 
 
 async def main():
     """主函数 - 修正版本"""

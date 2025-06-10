@@ -58,10 +58,9 @@ class PaperTools(BaseTools):
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "titles": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "论文标题列表，支持完整标题或部分标题"
+                    "title": {
+                        "type": "string",
+                        "description": "论文标题，支持完整标题或部分标题"
                     },
                     "format": {
                         "type": "string",
@@ -70,7 +69,7 @@ class PaperTools(BaseTools):
                         "description": "返回格式：markdown(格式化显示) 或 json(原始数据)"
                     }
                 },
-                "required": ["titles"]
+                "required": ["title"]
             }
         ),
         Tool(
@@ -128,39 +127,29 @@ class PaperTools(BaseTools):
     @handle_tool_error
     async def get_paper_details(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """获取论文详情工具 - 根据标题搜索"""
-        titles = arguments["titles"]
-        return_format = arguments.get("format", "markdown")
+        title = arguments["title"]
+        return_format = arguments.get("format", "json")
         
-        logger.info("Getting paper details by titles", titles=titles, format=return_format)
+        logger.info("Getting paper details by title", title=title, format=return_format)
         
         try:
             # 使用标题搜索来获取论文详情
             all_papers = []
-            
-            for title in titles:
-                # 对每个标题进行搜索
-                search_result = await self.go_client.search_papers(
-                    query=title,
-                    limit=5  # 限制结果数量，通常第一个结果就是目标论文
-                )
-                
-                papers = search_result.get("papers", [])
-                if papers:
-                    # 寻找最匹配的论文（标题完全匹配或最相似）
-                    best_match = self._find_best_title_match(title, papers)
-                    if best_match:
-                        all_papers.append(best_match)
-                    else:
-                        # 如果没有找到完全匹配，取第一个结果
-                        all_papers.append(papers[0])
-            
-            # 构造返回结果
-            result = {"papers": all_papers}
-            
+            raw_result = await self.go_client.get_paper_details(titles=[title], limit=2)
             if return_format == "json":
-                return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+                # 返回原始 JSON
+                json_text = json.dumps(raw_result, ensure_ascii=False, indent=2)
+                # 输出到日志
+                logger.debug("Returning JSON result", json_content=json_text)
+                # 或者使用 info 级别
+                logger.info("Paper details JSON result", 
+                        paper_count=len(all_papers), 
+                        json_length=len(json_text))
+                # 如果需要完整内容，可以单独记录
+                logger.debug(f"Full JSON response:\n{json_text}")
+                return [TextContent(type="text", text=json_text)]
             else:
-                content = self._format_paper_details(result)
+                content = self._format_paper_details(raw_result)
                 return [TextContent(type="text", text=content)]
             
         except Exception as e:

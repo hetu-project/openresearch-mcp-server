@@ -105,7 +105,7 @@ class GoServiceClient:
         session = await self._ensure_session()
         
         url = f"{self.base_url}{endpoint}"
-        
+        logger.info("tools_params params", tools_params=params)
         try:
             logger.debug(
                 "Making request to Go service",
@@ -212,7 +212,7 @@ class GoServiceClient:
             logger.error("Paper search failed", error=str(e))
             raise
     
-    async def get_paper_details(self, titles: List[str]) -> Dict[str, Any]:
+    async def get_paper_details(self, titles: List[str],limit: int = 2) -> Dict[str, Any]:
         """获取论文详情 - 通过标题搜索"""
         logger.info("Getting paper details via titles", titles=titles)
         
@@ -225,7 +225,7 @@ class GoServiceClient:
                 result = await self._make_request(
                     method="GET",
                     endpoint="/papers",
-                    params={"title": title, "limit": 5}
+                    params={"title": title, "limit": limit}
                 )
                 
                 papers = result.get("papers", [])
