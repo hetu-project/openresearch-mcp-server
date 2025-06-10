@@ -96,7 +96,7 @@ class NetworkTools(BaseTools):
         depth = arguments.get("depth", 2)
         direction = arguments.get("direction", "both")
         max_nodes = arguments.get("max_nodes", 50)
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
 
         logger.info(
             "Getting citation network", 
@@ -134,7 +134,7 @@ class NetworkTools(BaseTools):
         authors = arguments["authors"]
         time_range = arguments.get("time_range")
         max_nodes = arguments.get("max_nodes", 50)
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info(
             "Getting collaboration network", 

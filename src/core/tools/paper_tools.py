@@ -184,7 +184,7 @@ class PaperTools(BaseTools):
     async def get_paper_citations(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """获取论文引用工具 - 支持JSON格式"""
         paper_id = arguments["paper_id"]
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info("Getting paper citations", paper_id=paper_id, format=return_format)
         

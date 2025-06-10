@@ -84,7 +84,7 @@ class AuthorTools(BaseTools):
         """获取作者论文工具 - 支持JSON格式"""
         author_id = arguments["author_id"]
         limit = arguments.get("limit", 20)
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info("Getting author papers", author_id=author_id, limit=limit, format=return_format)
         

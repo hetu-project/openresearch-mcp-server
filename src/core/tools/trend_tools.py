@@ -182,7 +182,7 @@ class TrendTools(BaseTools):
         """获取热门关键词工具 - 支持JSON格式"""
         limit = arguments.get("limit", 20)
         time_range = arguments.get("time_range")
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info("Getting top keywords", limit=limit, time_range=time_range, format=return_format)
         
@@ -251,7 +251,7 @@ class TrendTools(BaseTools):
         """分析研究全景工具 - 支持JSON格式"""
         domain = arguments["domain"]
         analysis_dimensions = arguments.get("analysis_dimensions", ["topics", "authors", "trends"])
-        return_format = arguments.get("format", "markdown")
+        return_format = arguments.get("format", "json")
         
         logger.info(
             "Analyzing research landscape", 
