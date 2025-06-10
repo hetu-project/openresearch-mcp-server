@@ -142,9 +142,9 @@ class TrendTools(BaseTools):
     @handle_tool_error
     async def get_trending_papers(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """获取热门论文工具 - 支持JSON格式"""
-        time_window = arguments.get("time_window", "month")
-        limit = arguments.get("limit", 20)
-        return_format = arguments.get("format", "markdown")
+        time_window = arguments.get("time_window", "year")
+        limit = arguments.get("limit", 2)
+        return_format = arguments.get("format", "json")
 
         logger.info("Getting trending papers", time_window=time_window, limit=limit, format=return_format)
         
@@ -156,7 +156,17 @@ class TrendTools(BaseTools):
             
             if return_format == "json":
                 # 返回原始 JSON
-                return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+                # return [TextContent(type="text", text=json.dumps(raw_result, ensure_ascii=False, indent=2))]
+                            # 返回原始 JSON
+                json_text = json.dumps(raw_result, ensure_ascii=False, indent=2)
+                # 输出到日志
+                logger.debug("Returning JSON result", json_content=json_text)
+                # 或者使用 info 级别
+                logger.info("Trending papers JSON result", 
+                        json_length=len(json_text))
+                # 如果需要完整内容，可以单独记录
+                logger.debug(f"Full JSON response:\n{json_text}")
+                return [TextContent(type="text", text=json_text)]
             else:
                 # 返回格式化的 Markdown（默认）
                 content = self._format_trending_papers(raw_result, time_window)
