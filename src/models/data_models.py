@@ -1,11 +1,10 @@
-# src/models/data_models.py
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 from enum import Enum
 
 class PaperType(str, Enum):
-    """论文类型"""
+    """Paper Type"""
     JOURNAL = "journal"
     CONFERENCE = "conference"
     PREPRINT = "preprint"
@@ -13,7 +12,7 @@ class PaperType(str, Enum):
     THESIS = "thesis"
 
 class Author(BaseModel):
-    """作者信息模型 - MVP版本"""
+    """Author Information Model - MVP Version"""
     id: str
     name: str
     email: Optional[str] = None
@@ -25,7 +24,7 @@ class Author(BaseModel):
     research_interests: List[str] = []
 
 class Paper(BaseModel):
-    """论文信息模型 - MVP版本"""
+    """Paper Information Model - MVP Version"""
     id: str
     title: str
     abstract: Optional[str] = None
@@ -37,16 +36,16 @@ class Paper(BaseModel):
     arxiv_id: Optional[str] = None
     url: Optional[str] = None
     
-    # 基础信息
+    # Basic Information
     keywords: List[str] = []
     language: str = "en"
     
-    # 基础指标
+    # Basic Metrics
     citation_count: Optional[int] = None
     download_count: Optional[int] = None
 
 class SearchMetadata(BaseModel):
-    """搜索元数据 - MVP版本"""
+    """Search Metadata - MVP Version"""
     total_count: int
     page: int = 1
     page_size: int = 20
@@ -55,39 +54,39 @@ class SearchMetadata(BaseModel):
     filters_applied: Dict[str, Any] = {}
 
 class SearchResult(BaseModel):
-    """搜索结果模型 - MVP版本"""
+    """Search Result Model - MVP Version"""
     papers: List[Paper]
     metadata: SearchMetadata
 
 class NetworkNode(BaseModel):
-    """网络节点 - MVP版本"""
+    """Network Node - MVP Version"""
     id: str
     label: str
     type: str  # paper, author, institution
     properties: Dict[str, Any] = {}
 
 class NetworkEdge(BaseModel):
-    """网络边 - MVP版本"""
+    """Network Edge - MVP Version"""
     source: str
     target: str
     weight: Optional[float] = 1.0
     edge_type: str  # citation, collaboration
 
 class NetworkAnalysis(BaseModel):
-    """网络分析结果 - MVP版本"""
+    """Network Analysis Result - MVP Version"""
     nodes: List[NetworkNode]
     edges: List[NetworkEdge]
     node_count: int
     edge_count: int
 
 class TrendData(BaseModel):
-    """趋势数据点"""
+    """Trend Data Point"""
     time_period: str
     value: float
     label: Optional[str] = None
 
 class TrendAnalysis(BaseModel):
-    """趋势分析结果 - MVP版本"""
+    """Trend Analysis Result - MVP Version"""
     domain: str
     time_range: str
     data_points: List[TrendData]

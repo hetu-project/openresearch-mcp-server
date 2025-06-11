@@ -1,30 +1,30 @@
-协作模式示例：
-用户查询："找一些关于大语言模型在代码生成方面的最新研究"
+Collaboration Mode Example:
+User Query: "Find some latest research on large language models in code generation"
 
 
-Agent处理流程：
-├── 1. 理解查询意图
-│   ├── 主题：大语言模型 + 代码生成
-│   ├── 时间：最新（近2年）
-│   ├── 类型：研究论文
-│   └── 目标：综合了解
-├── 2. 制定工具调用策略
-│   ├── 先用semantic_search_papers获取相关论文
-│   ├── 再用get_research_trends分析趋势
-│   ├── 最后用get_citation_network分析影响力
-│   └── 可能需要extract_keywords提取关键概念
-├── 3. 执行工具调用
-│   ├── 并行调用多个工具
-│   ├── 处理工具间依赖
-│   ├── 错误处理和重试
-│   └── 结果收集和验证
-├── 4. 结果分析和整合
-│   ├── 识别重要论文和作者
-│   ├── 分析研究趋势和方向
-│   ├── 发现研究空白和机会
-│   └── 评估技术成熟度
-└── 5. 生成最终回答
-    ├── 结构化总结
-    ├── 关键发现突出
-    ├── 具体论文推荐
-    └── 进一步研究建议
+Agent Processing Flow:
+├── 1. Understanding Query Intent
+│   ├── Topic: Large Language Models + Code Generation
+│   ├── Time: Latest (Last 2 years)
+│   ├── Type: Research Papers
+│   └── Goal: Comprehensive Understanding
+├── 2. Formulating Tool Call Strategy
+│   ├── First use semantic_search_papers to get relevant papers
+│   ├── Then use get_research_trends to analyze trends
+│   ├── Finally use get_citation_network to analyze influence
+│   └── May need extract_keywords to extract key concepts
+├── 3. Execute Tool Calls
+│   ├── Parallel tool calls
+│   ├── Handle tool dependencies
+│   ├── Error handling and retry
+│   └── Result collection and validation
+├── 4. Result Analysis and Integration
+│   ├── Identify important papers and authors
+│   ├── Analyze research trends and directions
+│   ├── Discover research gaps and opportunities
+│   └── Evaluate technology maturity
+└── 5. Generate Final Answer
+    ├── Structured summary
+    ├── Key findings highlighted
+    ├── Specific paper recommendations
+    └── Further research suggestions

@@ -1,4 +1,3 @@
-# src/clients/go_client.py
 import asyncio
 import aiohttp
 import structlog
@@ -11,7 +10,7 @@ from ..utils.error_handler import ServiceConnectionError
 logger = structlog.get_logger()
 
 class GoServiceClient:
-    """Go服务客户端 - 基于实际API文档"""
+    """Go Service Client - Based on actual API documentation"""
     
     def __init__(self):
         self.base_url = settings.go_service_url.rstrip('/')
@@ -20,16 +19,16 @@ class GoServiceClient:
         self._session_lock = asyncio.Lock()
         
     async def __aenter__(self):
-        """异步上下文管理器入口"""
+        """Async context manager entry"""
         await self.connect()
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """异步上下文管理器出口"""
+        """Async context manager exit"""
         await self.disconnect()
     
     async def connect(self):
-        """简化的线程安全连接"""
+        """Thread-safe simplified connection"""
         if self.session and not self.session.closed:
             return
             
@@ -78,14 +77,14 @@ class GoServiceClient:
                 raise
     
     async def disconnect(self):
-        """断开连接"""
+        """Disconnect"""
         if self.session:
             await self.session.close()
             self.session = None
             logger.info("Go service client disconnected")
     
     async def _ensure_session(self) -> aiohttp.ClientSession:
-        """确保 session 存在并返回非 None 的 session"""
+        """Ensure session exists and return non-None session"""
         if not self.session or self.session.closed:
             await self.connect()
         
@@ -101,7 +100,7 @@ class GoServiceClient:
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """发送HTTP请求"""
+        """Send HTTP request"""
         session = await self._ensure_session()
         
         url = f"{self.base_url}{endpoint}"
@@ -136,7 +135,6 @@ class GoServiceClient:
                 
                 try:
                     result = await response.json()
-                                    # 添加详细的响应调试
                     print(f"DEBUG: Response status: {response.status}")
                     print(f"DEBUG: Response content: {json.dumps(result, ensure_ascii=False, indent=2)}")
                     logger.debug(
@@ -158,7 +156,7 @@ class GoServiceClient:
             logger.error("Request timeout", url=url)
             raise ServiceConnectionError(f"Request timeout: {url}")
 
-    # ============ 论文相关接口 ============
+    # ============ Paper Related APIs ============
     
     async def search_papers(
         self,
@@ -168,7 +166,7 @@ class GoServiceClient:
         limit: int = 20,
         offset: int = 0
     ) -> Dict[str, Any]:
-        """搜索论文 - GET /papers"""
+        """Search papers - GET /papers"""
         logger.info(
             "Searching papers via Go service",
             query=query,
@@ -176,7 +174,6 @@ class GoServiceClient:
             limit=limit
         )
         
-        # 构建查询参数
         params = {}
         if query:
             params["title"] = query
@@ -213,15 +210,13 @@ class GoServiceClient:
             raise
     
     async def get_paper_details(self, titles: List[str],limit: int = 2) -> Dict[str, Any]:
-        """获取论文详情 - 通过标题搜索"""
+        """Get paper details - Search by titles"""
         logger.info("Getting paper details via titles", titles=titles)
         
         try:
-            # 批量获取论文详情
             all_papers = []
             
             for title in titles:
-                # 使用标题进行精确搜索
                 result = await self._make_request(
                     method="GET",
                     endpoint="/papers",
@@ -230,7 +225,6 @@ class GoServiceClient:
                 
                 papers = result.get("papers", [])
                 if papers:
-                    # 返回所有候选论文，让调用方决定如何选择
                     all_papers.extend([{
                         "search_title": title,
                         "candidates": papers
@@ -249,7 +243,7 @@ class GoServiceClient:
             raise
 
     async def get_paper_citations(self, paper_id: str) -> Dict[str, Any]:
-        """获取论文引用关系 - GET /papers/:id/citations"""
+        """Get paper citations - GET /papers/:id/citations"""
         logger.info("Getting paper citations", paper_id=paper_id)
         
         try:
@@ -258,11 +252,9 @@ class GoServiceClient:
                 endpoint=f"/papers/{paper_id}/citations"
             )
             
-            # 验证返回数据结构
             if not isinstance(result, dict):
                 raise ValueError("Invalid response format")
             
-            # 确保必要字段存在
             result.setdefault('citing_papers', [])
             result.setdefault('cited_papers', [])
             result.setdefault('incoming_citations_count', len(result.get('citing_papers', [])))
@@ -285,7 +277,7 @@ class GoServiceClient:
             raise
     
     async def get_paper_recommendations(self, paper_id: str) -> Dict[str, Any]:
-        """获取论文推荐 - GET /papers/:id/recommendations"""
+        """Get paper recommendations - GET /papers/:id/recommendations"""
         logger.info("Getting paper recommendations", paper_id=paper_id)
         
         try:
@@ -311,7 +303,7 @@ class GoServiceClient:
         time_window: str = "month",
         limit: int = 20
     ) -> Dict[str, Any]:
-        """获取热门论文 - GET /papers/trending"""
+        """Get trending papers - GET /papers/trending"""
         logger.info(
             "Getting trending papers",
             time_window=time_window,
@@ -325,19 +317,15 @@ class GoServiceClient:
                 params={"time": time_window, "limit": limit}
             )
             
-            # 验证返回数据结构
             if not isinstance(result, dict):
                 raise ValueError("Invalid response format")
             
-            # 确保必要字段存在
             result.setdefault('trending_papers', [])
             result.setdefault('count', len(result.get('trending_papers', [])))
             result.setdefault('time_window', time_window)
             
-            # 验证每篇论文的数据完整性
             papers = result.get('trending_papers', [])
             for paper in papers:
-                # 确保基本字段存在
                 paper.setdefault('id', '')
                 paper.setdefault('title', 'Unknown Title')
                 paper.setdefault('abstract', '')
@@ -366,7 +354,7 @@ class GoServiceClient:
 
     
     async def get_top_keywords(self) -> Dict[str, Any]:
-        """获取热门话题 - GET /papers/keywords/top"""
+        """Get top keywords - GET /papers/keywords/top"""
         logger.info("Getting top keywords")
         
         try:
@@ -375,15 +363,12 @@ class GoServiceClient:
                 endpoint="/papers/keywords/top"
             )
             
-            # 验证返回数据结构
             if not isinstance(result, dict):
                 raise ValueError("Invalid response format")
             
-            # 确保必要字段存在
             result.setdefault('keywords', [])
             result.setdefault('count', len(result.get('keywords', [])))
             
-            # 验证每个关键词的数据完整性
             keywords = result.get('keywords', [])
             for keyword_data in keywords:
                 keyword_data.setdefault('keyword', '')
@@ -400,7 +385,7 @@ class GoServiceClient:
             logger.error("Get top keywords failed", error=str(e))
             raise
 
-    # ============ 作者相关接口 ============
+    # ============ Author Related APIs ============
     
     async def search_authors(
         self,
@@ -409,7 +394,7 @@ class GoServiceClient:
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 20
     ) -> Dict[str, Any]:
-        """搜索作者 - 支持按姓名、ID或其他条件搜索 - GET /authors"""
+        """Search authors - Support search by name, ID or other conditions - GET /authors"""
         logger.info(
             "Searching authors via Go service",
             query=query,
@@ -420,21 +405,17 @@ class GoServiceClient:
         
         params = {}
         
-        # 按 ID 搜索（优先级最高）
         if author_id:
             params["id"] = author_id
-        # 按姓名搜索
         elif query:
             params["name"] = query
         
-        # 其他过滤条件
         if filters:
             if filters.get("affiliation"):
                 params["affiliation"] = filters["affiliation"]
             if filters.get("research_area"):
                 params["interest"] = filters["research_area"]
         
-        # 添加 limit（只在非 ID 搜索时使用，因为 ID 搜索通常返回单个结果）
         if not author_id:
             params["limit"] = limit
         
@@ -457,7 +438,7 @@ class GoServiceClient:
             raise
     
     async def get_author_papers(self, author_id: str) -> Dict[str, Any]:
-        """获取作者发表的论文 - GET /authors/:id/papers"""
+        """Get author's published papers - GET /authors/:id/papers"""
         logger.info("Getting author papers", author_id=author_id)
         
         try:
@@ -479,7 +460,7 @@ class GoServiceClient:
             raise
     
     async def get_author_coauthors(self, author_id: str) -> Dict[str, Any]:
-        """获取作者合作者 - GET /authors/:id/coauthors"""
+        """Get author's collaborators - GET /authors/:id/coauthors"""
         logger.info("Getting author coauthors", author_id=author_id)
         
         try:
@@ -500,7 +481,7 @@ class GoServiceClient:
             logger.error("Get author coauthors failed", error=str(e))
             raise
 
-    # ============ 网络分析接口 ============
+    # ============ Network Analysis APIs ============
     
     async def get_citation_network(
         self,
@@ -509,7 +490,7 @@ class GoServiceClient:
         direction: str = "both",
         max_nodes: int = 50
     ) -> Dict[str, Any]:
-        """获取引用网络 - 基于论文引用关系构建"""
+        """Get citation network - build based on paper citation relationships"""
         logger.info(
             "Getting citation network via Go service",
             seed_papers=seed_papers,
@@ -518,7 +499,6 @@ class GoServiceClient:
         )
         
         try:
-            # 使用第一个种子论文获取网络
             if not seed_papers:
                 return {"nodes": [], "edges": []}
             
@@ -529,7 +509,6 @@ class GoServiceClient:
                 params={"depth": depth, "max_nodes": max_nodes}
             )
             
-            # 转换为标准格式
             graph_data = result.get("graph", {})
             
             logger.info(
@@ -549,7 +528,7 @@ class GoServiceClient:
         authors: List[str],
         time_range: Optional[str] = None
     ) -> Dict[str, Any]:
-        """获取合作网络 - GET /network/author/:id"""
+        """Get collaboration network - GET /network/author/:id"""
         logger.info(
             "Getting collaboration network via Go service",
             authors=authors,
@@ -557,7 +536,6 @@ class GoServiceClient:
         )
         
         try:
-            # 使用第一个作者获取网络
             if not authors:
                 return {"nodes": [], "edges": []}
             
@@ -568,7 +546,6 @@ class GoServiceClient:
                 params={"depth": 1, "max_nodes": 50}
             )
             
-            # 转换为标准格式
             graph_data = result.get("graph", {})
             
             logger.info(
@@ -583,8 +560,6 @@ class GoServiceClient:
             logger.error("Get collaboration network failed", error=str(e))
             raise
 
-    # ============ 趋势分析接口 ============
-    
     async def get_research_trends(
         self,
         domain: str,
@@ -592,7 +567,7 @@ class GoServiceClient:
         metrics: List[str],
         granularity: str = "year"
     ) -> Dict[str, Any]:
-        """获取研究趋势 - 基于热门论文和关键词分析"""
+        """Get research trends - based on popular papers and keyword analysis"""
         logger.info(
             "Getting research trends via Go service",
             domain=domain,
@@ -602,16 +577,13 @@ class GoServiceClient:
         )
         
         try:
-            # 解析时间范围
             years = time_range.split("-")
             start_year = int(years[0]) if len(years) > 0 else 2020
             end_year = int(years[1]) if len(years) > 1 else 2024
             
-            # 获取不同时间窗口的热门论文来分析趋势
             trend_data = []
             
             for year in range(start_year, end_year + 1):
-                # 搜索该年份该领域的论文
                 papers_result = await self.search_papers(
                     query=domain,
                     filters={"year": year},
@@ -627,7 +599,7 @@ class GoServiceClient:
                 trend_data.append({
                     "time_period": str(year),
                     "value": paper_count if "publication_count" in metrics else citation_count,
-                    "label": f"{year}年"
+                    "label": f"Year {year}"
                 })
             
             result = {
@@ -653,7 +625,7 @@ class GoServiceClient:
         domain: str,
         analysis_dimensions: List[str]
     ) -> Dict[str, Any]:
-        """分析研究领域全景 - 综合多个接口数据"""
+        """Analyze research field landscape - integrate multiple interface data"""
         logger.info(
             "Analyzing research landscape via Go service",
             domain=domain,
@@ -663,10 +635,8 @@ class GoServiceClient:
         try:
             landscape_data = {}
             
-            # 获取热门话题
             if "topics" in analysis_dimensions:
                 keywords_result = await self.get_top_keywords()
-                # 过滤与领域相关的关键词
                 relevant_keywords = [
                     kw for kw in keywords_result.get("keywords", [])
                     if domain.lower() in kw.get("keyword", "").lower()
@@ -680,14 +650,12 @@ class GoServiceClient:
                     for kw in relevant_keywords[:10]
                 ]
             
-            # 获取热门论文和作者
             if "authors" in analysis_dimensions:
                 papers_result = await self.search_papers(
                     query=domain,
                     limit=50
                 )
                 
-                # 统计活跃作者
                 author_stats = {}
                 for paper in papers_result.get("papers", []):
                     for author in paper.get("authors", []):
@@ -701,7 +669,6 @@ class GoServiceClient:
                                 }
                             author_stats[author_name]["paper_count"] += 1
                 
-                # 排序并取前10
                 top_authors = sorted(
                     author_stats.values(),
                     key=lambda x: x["paper_count"],
@@ -710,7 +677,6 @@ class GoServiceClient:
                 
                 landscape_data["active_authors"] = top_authors
             
-            # 获取热门论文作为新兴趋势
             if "trends" in analysis_dimensions:
                 trending_result = await self.get_trending_papers(
                     time_window="month",
@@ -721,7 +687,7 @@ class GoServiceClient:
                     {
                         "name": paper.get("title", "")[:50] + "...",
                         "growth_rate": paper.get("popularity_score", 0) * 10,
-                        "description": f"热门论文，引用数: {paper.get('citations', 0)}"
+                        "description": f"Popular paper, citations: {paper.get('citations', 0)}"
                     }
                     for paper in trending_result.get("trending_papers", [])[:5]
                 ]
@@ -734,12 +700,9 @@ class GoServiceClient:
             logger.error("Analyze research landscape failed", error=str(e))
             raise
     
-    # ============ 辅助接口 ============
-    
     async def health_check(self) -> Dict[str, Any]:
-        """健康检查"""
+        """Health check"""
         try:
-            # 使用简单的论文搜索作为健康检查
             result = await self.search_papers(
                 query="test",
                 limit=1
@@ -753,9 +716,8 @@ class GoServiceClient:
             raise
     
     async def get_service_info(self) -> Dict[str, Any]:
-        """获取服务信息"""
+        """Get service information"""
         try:
-            # 获取热门关键词作为服务信息的一部分
             keywords_result = await self.get_top_keywords()
             
             result = {
@@ -780,6 +742,4 @@ class GoServiceClient:
             logger.error("Get service info failed", error=str(e))
             raise
 
-# 创建全局客户端实例
 go_client = GoServiceClient()
-

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-调试搜索论文返回格式
+Debug search paper return format
 """
 import asyncio
 import sys
 import json
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root directory to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -15,17 +15,17 @@ from src.server import AcademicMCPServer
 from mcp.types import TextContent
 
 async def debug_search_format():
-    """调试搜索论文的返回格式"""
+    """Debug search papers return format"""
     server = None
     
     try:
         print("🔍 Debugging search_papers return format...")
         
-        # 初始化服务器
+        # Initialize server
         server = AcademicMCPServer()
         await server.initialize()
         
-        # 直接调用搜索工具
+        # Directly call search tool
         if "search_papers" in server.tools:
             print("\n📋 Calling search_papers tool...")
             
@@ -48,13 +48,13 @@ async def debug_search_format():
                         print(f"         TextContent.text length: {len(item.text)}")
                         print(f"         TextContent.text preview: {item.text[:200]}...")
                         
-                        # 尝试解析为 JSON
+                        # Try to parse as JSON
                         try:
                             parsed_json = json.loads(item.text)
                             print(f"         ✅ Content is valid JSON")
                             print(f"         JSON keys: {list(parsed_json.keys()) if isinstance(parsed_json, dict) else 'Not a dict'}")
                             
-                            # 如果是论文搜索结果
+                            # If it's paper search results
                             if isinstance(parsed_json, dict) and "papers" in parsed_json:
                                 papers = parsed_json["papers"]
                                 print(f"         📄 Found {len(papers)} papers")
@@ -73,10 +73,10 @@ async def debug_search_format():
                     else:
                         print(f"         Raw content: {str(item)[:200]}...")
             
-            # 测试 _extract_text_from_content 方法
+            # Test _extract_text_from_content method
             print(f"\n🔧 Testing _extract_text_from_content:")
             
-            # 模拟 interactive_test.py 中的方法
+            # Simulate method from interactive_test.py
             def extract_text_from_content(content_list) -> str:
                 text_parts = []
                 for content in content_list:
@@ -92,7 +92,7 @@ async def debug_search_format():
             print(f"   Extracted text length: {len(extracted_text)}")
             print(f"   Extracted text preview: {extracted_text[:300]}...")
             
-            # 尝试解析提取的文本为 JSON
+            # Try to parse extracted text as JSON
             try:
                 parsed_extracted = json.loads(extracted_text)
                 print(f"   ✅ Extracted text is valid JSON")

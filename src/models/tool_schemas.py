@@ -1,9 +1,8 @@
-# src/models/tool_schemas.py
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 from .data_models import SearchResult, Paper, Author
 
-# 输入模型
+# Input Models
 class SearchPapersInput(BaseModel):
     query: str
     filters: Optional[Dict[str, Any]] = {}
@@ -23,7 +22,7 @@ class SearchAuthorsInput(BaseModel):
 class GetAuthorDetailsInput(BaseModel):
     author_ids: List[str]
 
-# 输出模型
+# Output Models
 class BaseOutput(BaseModel):
     success: bool
     execution_time_ms: int

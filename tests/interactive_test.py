@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Interactive MCP Server Test
-交互式测试 MCP Server - 修正版本
+Interactive Test MCP Server - Fixed Version
 """
 
 import asyncio
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root directory to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -20,7 +20,7 @@ class InteractiveTest:
         self.server: AcademicMCPServer | None = None
     
     async def setup(self):
-        """初始化服务器"""
+        """Initialize server"""
         print("🚀 Initializing MCP Server...")
         
         try:
@@ -32,7 +32,7 @@ class InteractiveTest:
             raise
         
     async def show_menu(self):
-        """显示菜单"""
+        """Display menu"""
         print("\n" + "=" * 50)
         print("🧪 OpenResearch MCP Server Interactive Test")
         print("=" * 50)
@@ -41,7 +41,7 @@ class InteractiveTest:
         print("3. Search authors") 
         print("4. Get author papers")
         print("5. Get paper details")
-        print("6. Get paper citations")  # 新增
+        print("6. Get paper citations")  # New
         print("7. Get trending papers")
         print("8. Get top keywords")
         print("9. Server health check")
@@ -50,7 +50,7 @@ class InteractiveTest:
         print("-" * 50)
     
     async def list_tools(self):
-        """列出所有工具"""
+        """List all tools"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -58,7 +58,7 @@ class InteractiveTest:
         print("\n📋 Available Tools:")
         
         try:
-            # 直接访问工具定义
+            # Directly access tool definitions
             tools = self.server.tool_definitions
             
             for i, tool in enumerate(tools, 1):
@@ -68,7 +68,7 @@ class InteractiveTest:
             print(f"❌ Error listing tools: {e}")
     
     def _extract_text_from_content(self, content_list) -> str:
-        """安全地从内容列表中提取文本"""
+        """Safely extract text from content list"""
         text_parts = []
         for content in content_list:
             if isinstance(content, TextContent):
@@ -76,22 +76,22 @@ class InteractiveTest:
             elif hasattr(content, 'text'):
                 text_parts.append(content.text)
             else:
-                # 对于非文本内容，显示类型信息
+                # For non-text content, display type information
                 text_parts.append(f"[{type(content).__name__}]")
         return "\n".join(text_parts)
     
     async def _call_tool_directly(self, tool_name: str, arguments: dict) -> list[TextContent]:
-        """直接调用工具函数"""
+        """Directly call tool function"""
         if not self.server:
             raise RuntimeError("Server not initialized")
         
         if tool_name not in self.server.tools:
             raise ValueError(f"Tool '{tool_name}' not found")
         
-        # 直接调用工具函数
+        # Directly call tool function
         result = await self.server.tools[tool_name](arguments)
         
-        # 确保返回 TextContent 列表
+        # Ensure return TextContent list
         if isinstance(result, list) and all(isinstance(item, TextContent) for item in result):
             return result
         elif isinstance(result, list):
@@ -100,7 +100,7 @@ class InteractiveTest:
             return [TextContent(type="text", text=str(result))]
     
     async def search_papers(self):
-        """搜索论文"""
+        """Search papers"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -113,7 +113,7 @@ class InteractiveTest:
         limit = input("Enter limit (default 5): ").strip()
         limit = int(limit) if limit.isdigit() else 5
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -136,7 +136,7 @@ class InteractiveTest:
             text_result = self._extract_text_from_content(result)
             print(text_result)
             
-            # 询问是否获取详情
+            # Ask if want to get details
             if return_format == "markdown":
                 get_details = input("\n🔍 Would you like to get details for any paper? (y/n): ").strip().lower()
                 if get_details == 'y':
@@ -148,7 +148,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def search_authors(self):
-        """搜索作者"""
+        """Search authors"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -161,7 +161,7 @@ class InteractiveTest:
         limit = input("Enter limit (default 3): ").strip()
         limit = int(limit) if limit.isdigit() else 3
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -188,7 +188,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     # async def get_author_details(self):
-    #     """获取作者详情"""
+    #     """Get author details"""
     #     if not self.server:
     #         print("❌ Server not initialized")
     #         return
@@ -202,14 +202,14 @@ class InteractiveTest:
     #         print("❌ Author ID cannot be empty")
     #         return
         
-    #     # 处理多个ID（用逗号分隔）
+    #     # Handle multiple IDs (comma-separated)
     #     author_ids = [id.strip() for id in author_ids_input.split(',') if id.strip()]
         
     #     if not author_ids:
     #         print("❌ No valid author IDs provided")
     #         return
         
-    #     # 选择返回格式
+    #     # Choose return format
     #     print("\nChoose return format:")
     #     print("1. Markdown (formatted display)")
     #     print("2. JSON (raw data)")
@@ -236,7 +236,7 @@ class InteractiveTest:
     #         print(f"❌ Error: {e}")
     
     async def get_author_papers(self):
-        """获取作者论文"""
+        """Get author papers"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -250,11 +250,11 @@ class InteractiveTest:
             print("❌ Author ID cannot be empty")
             return
         
-        # 获取限制数量
+        # Get limit
         limit = input("Enter limit (default 20): ").strip()
         limit = int(limit) if limit.isdigit() else 20
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -282,7 +282,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def get_paper_details(self):
-        """获取论文详情"""
+        """Get paper details"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -299,14 +299,14 @@ class InteractiveTest:
             print("❌ Paper title(s) cannot be empty")
             return
         
-        # 解析输入的标题
+        # Parse input titles
         titles = [title.strip() for title in titles_input.split(',') if title.strip()]
         
         if not titles:
             print("❌ No valid titles provided")
             return
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -334,7 +334,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def _get_paper_details_by_title(self, title: str):
-        """根据标题获取论文详情的辅助方法"""
+        """Helper method to get paper details by title"""
         try:
             result = await self._call_tool_directly(
                 "get_paper_details",
@@ -352,7 +352,7 @@ class InteractiveTest:
             print(f"❌ Error getting details: {e}")
     
     async def get_paper_citations(self):
-        """获取论文引用关系"""
+        """Get paper citations"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -366,7 +366,7 @@ class InteractiveTest:
             print("❌ Paper ID cannot be empty")
             return
         
-        # 验证 UUID 格式
+        # Validate UUID format
         import re
         uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
         if not re.match(uuid_pattern, paper_id.lower()):
@@ -374,7 +374,7 @@ class InteractiveTest:
             print("💡 Tip: Use 'Search papers' to find paper IDs")
             return
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -401,7 +401,7 @@ class InteractiveTest:
             print(f"❌ Error getting citations: {e}")
     
     async def get_trending_papers(self):
-        """获取热门论文"""
+        """Get trending papers"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -437,8 +437,7 @@ class InteractiveTest:
             print("\n✅ Results:")
             text_result = self._extract_text_from_content(result)
             print(text_result)
-            
-            # 如果是 Markdown 格式，询问是否查看某篇论文的详情
+            # If it's Markdown format, ask if user wants to view paper details
             if return_format == "markdown":
                 view_details = input("\n🔍 Would you like to view details of any paper? (y/n): ").strip().lower()
                 if view_details == 'y':
@@ -464,7 +463,7 @@ class InteractiveTest:
 
     
     async def get_top_keywords(self):
-        """获取热门关键词"""
+        """Get top keywords"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -473,7 +472,7 @@ class InteractiveTest:
         limit = input("Enter limit (default 20): ").strip()
         limit = int(limit) if limit.isdigit() else 20
         
-        # 选择返回格式
+        # Choose return format
         print("\nChoose return format:")
         print("1. Markdown (formatted display)")
         print("2. JSON (raw data)")
@@ -495,7 +494,7 @@ class InteractiveTest:
             text_result = self._extract_text_from_content(result)
             print(text_result)
             
-            # 如果是 Markdown 格式，询问是否使用某个关键词搜索论文
+            # If it's Markdown format, ask if user wants to search papers with a keyword
             if return_format == "markdown":
                 search_papers = input("\n🔍 Would you like to search papers with any keyword? (y/n): ").strip().lower()
                 if search_papers == 'y':
@@ -522,7 +521,7 @@ class InteractiveTest:
 
     
     async def server_health_check(self):
-        """服务器健康检查"""
+        """Server health check"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -530,14 +529,14 @@ class InteractiveTest:
         print("\n🏥 Checking server health...")
         
         try:
-            # 检查基本状态
+            # Check basic status
             print("✅ Basic Health Check:")
             print(f"Go Client: {'✅ Connected' if self.server.go_client else '❌ Not connected'}")
             print(f"Data Processor: {'✅ Ready' if self.server.data_processor else '❌ Not ready'}")
             print(f"Tools Loaded: {len(self.server.tools)}")
             print(f"Tool Definitions: {len(self.server.tool_definitions)}")
             
-            # 测试 Go 服务连接
+            # Test Go service connection
             if self.server.go_client:
                 try:
                     async with self.server.go_client:
@@ -550,7 +549,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def server_info(self):
-        """获取服务器信息"""
+        """Get server information"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -562,7 +561,7 @@ class InteractiveTest:
             print(f"Available Tools: {len(self.server.tools)}")
             print(f"Tool Names: {', '.join(self.server.tools.keys())}")
             
-            # 显示工具分类
+            # Display tool categories
             print("\nTool Categories:")
             author_tools = [name for name in self.server.tools.keys() if 'author' in name]
             paper_tools = [name for name in self.server.tools.keys() if 'paper' in name]
@@ -578,7 +577,7 @@ class InteractiveTest:
             if trend_tools:
                 print(f"  📈 Trend Tools: {', '.join(trend_tools)}")
             
-            # 显示配置信息
+            # Display configuration information
             if hasattr(self.server, 'go_client') and self.server.go_client:
                 print(f"\nGo Service URL: {self.server.go_client.base_url}")
             
@@ -586,11 +585,11 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def run_quick_test(self):
-        """运行快速测试"""
+        """Run quick test"""
         print("\n🚀 Running Quick Test...")
         
         try:
-            # 测试搜索论文
+            # Test paper search
             print("\n1. Testing paper search...")
             result = await self._call_tool_directly(
                 "search_papers",
@@ -602,7 +601,7 @@ class InteractiveTest:
             )
             print("✅ Paper search: OK")
             
-            # 测试搜索作者
+            # Test author search
             print("\n2. Testing author search...")
             result = await self._call_tool_directly(
                 "search_authors",
@@ -614,7 +613,7 @@ class InteractiveTest:
             )
             print("✅ Author search: OK")
             
-            # 测试热门关键词
+            # Test top keywords
             print("\n3. Testing top keywords...")
             result = await self._call_tool_directly(
                 "get_top_keywords",
@@ -631,11 +630,11 @@ class InteractiveTest:
             print(f"❌ Quick test failed: {e}")
     
     async def run_demo(self):
-        """运行演示"""
+        """Run demo"""
         print("\n🎭 Running Demo...")
         
         try:
-            # 演示搜索论文
+            # Demo paper search
             print("\n📄 Demo: Searching for 'Web3' papers...")
             result = await self._call_tool_directly(
                 "search_papers",
@@ -648,7 +647,7 @@ class InteractiveTest:
             text_result = self._extract_text_from_content(result)
             print(text_result[:500] + "..." if len(text_result) > 500 else text_result)
             
-            # 演示热门关键词
+            # Demo top keywords
             print("\n🏷️ Demo: Top 10 keywords...")
             result = await self._call_tool_directly(
                 "get_top_keywords",
@@ -666,7 +665,7 @@ class InteractiveTest:
             print(f"❌ Demo failed: {e}")
     
     async def show_advanced_menu(self):
-        """显示高级菜单"""
+        """Show advanced menu"""
         print("\n" + "=" * 50)
         print("🔧 Advanced Options")
         print("=" * 50)
@@ -678,7 +677,7 @@ class InteractiveTest:
         print("-" * 50)
     
     async def test_specific_tool(self):
-        """测试特定工具"""
+        """Test specific tool"""
         if not self.server:
             print("❌ Server not initialized")
             return
@@ -698,7 +697,7 @@ class InteractiveTest:
                 tool_name = tools[tool_index]
                 print(f"\n🔧 Testing tool: {tool_name}")
                 
-                # 根据工具类型提供默认参数
+                # Provide default parameters based on tool type
                 if "search_papers" in tool_name:
                     args = {"query": "test", "limit": 2, "format": "markdown"}
                 elif "search_authors" in tool_name:
@@ -724,7 +723,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def batch_operations(self):
-        """批量操作"""
+        """Batch operations"""
         print("\n📦 Batch Operations")
         print("1. Batch search papers")
         print("2. Batch get paper details")
@@ -742,7 +741,7 @@ class InteractiveTest:
             print("❌ Invalid choice")
     
     async def _batch_search_papers(self):
-        """批量搜索论文"""
+        """Batch search papers"""
         print("\n🔍 Batch Search Papers")
         queries_input = input("Enter search queries (comma-separated): ").strip()
         
@@ -773,7 +772,7 @@ class InteractiveTest:
                 print(f"❌ Error for query '{query}': {e}")
     
     async def _batch_get_paper_details(self):
-        """批量获取论文详情"""
+        """Batch get paper details"""
         print("\n📄 Batch Get Paper Details")
         titles_input = input("Enter paper titles (comma-separated): ").strip()
         
@@ -800,7 +799,7 @@ class InteractiveTest:
             print(f"❌ Error: {e}")
     
     async def run(self):
-        """运行交互式测试"""
+        """Run interactive test"""
         try:
             await self.setup()
             
@@ -833,7 +832,7 @@ class InteractiveTest:
                         await self.server_health_check()
                     elif choice == "10":
                         await self.server_info()
-                    elif choice == "99":  # 隐藏的高级选项
+                    elif choice == "99":  # Hidden advanced options
                         while True:
                             await self.show_advanced_menu()
                             adv_choice = input("Enter choice: ").strip()

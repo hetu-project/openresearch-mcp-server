@@ -1,50 +1,44 @@
 """
-学术研究MCP服务器模块
+Academic Research MCP Server Module
 
-提供学术研究相关的MCP服务器实现，包括论文搜索、作者分析、
-网络分析和趋势分析等功能。
+Provides academic research related MCP server implementation, including paper search,
+author analysis, network analysis and trend analysis functions.
 """
 
 from .mcp_server import AcademicMCPServer
 
-# 导出主要类
 __all__ = [
     "AcademicMCPServer",
 ]
 
-# 版本信息
 __version__ = "1.0.0"
 
-# 模块描述
-__description__ = "Academic Research MCP Server - 学术研究MCP服务器"
+__description__ = "Academic Research MCP Server"
 
-# 支持的工具类型
 SUPPORTED_TOOLS = [
-    "search_papers",           # 搜索论文
-    "get_paper_details",       # 获取论文详情
-    "search_authors",          # 搜索作者
-    "get_citation_network",    # 获取引用网络
-    "get_collaboration_network", # 获取合作网络
-    "get_research_trends",     # 获取研究趋势
-    "analyze_research_landscape" # 分析研究领域
+    "search_papers",           # Search papers
+    "get_paper_details",       # Get paper details
+    "search_authors",          # Search authors
+    "get_citation_network",    # Get citation network
+    "get_collaboration_network", # Get collaboration network
+    "get_research_trends",     # Get research trends
+    "analyze_research_landscape" # Analyze research landscape
 ]
 
-# 便捷函数：创建服务器实例
 def create_server() -> AcademicMCPServer:
     """
-    创建学术研究MCP服务器实例
+    Create an academic research MCP server instance
     
     Returns:
-        AcademicMCPServer: 配置好的服务器实例
+        AcademicMCPServer: Configured server instance
     """
     return AcademicMCPServer()
 
-# 便捷函数：获取支持的工具列表
 def get_supported_tools() -> list[str]:
     """
-    获取服务器支持的所有工具名称
+    Get all tool names supported by the server
     
     Returns:
-        list[str]: 支持的工具名称列表
+        list[str]: List of supported tool names
     """
     return SUPPORTED_TOOLS.copy()

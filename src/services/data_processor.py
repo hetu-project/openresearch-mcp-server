@@ -7,7 +7,7 @@ from ..models.data_models import Paper, Author, SearchResult, SearchMetadata
 logger = structlog.get_logger()
 
 class DataProcessor:
-    """数据处理服务 - MVP版本"""
+    """Data Processing Service - MVP Version"""
     
     def __init__(self):
         pass
@@ -18,19 +18,16 @@ class DataProcessor:
         query: str,
         search_params: Dict[str, Any]
     ) -> SearchResult:
-        """处理搜索结果"""
+        """Process search results"""
         start_time = datetime.now()
         
         try:
-            # 解析论文数据
             papers = await self._parse_papers(raw_data.get("papers", []))
             
-            # 生成元数据
             metadata = self._generate_metadata(
                 raw_data, query, search_params, start_time
             )
             
-            # 构建结果
             result = SearchResult(
                 papers=papers,
                 metadata=metadata
@@ -49,18 +46,16 @@ class DataProcessor:
             raise
     
     async def _parse_papers(self, raw_papers: List[Dict[str, Any]]) -> List[Paper]:
-        """解析论文数据"""
+        """Parse paper data"""
         papers = []
         
         for raw_paper in raw_papers:
             try:
-                # 解析作者信息
                 authors = []
                 for raw_author in raw_paper.get("authors", []):
                     author = self._parse_author(raw_author)
                     authors.append(author)
                 
-                # 解析论文信息
                 paper = Paper(
                     id=raw_paper["id"],
                     title=raw_paper["title"],
@@ -91,7 +86,7 @@ class DataProcessor:
         return papers
     
     def _parse_author(self, raw_author: Dict[str, Any]) -> Author:
-        """解析作者数据"""
+        """Parse author data"""
         return Author(
             id=raw_author["id"],
             name=raw_author["name"],
@@ -111,7 +106,7 @@ class DataProcessor:
         search_params: Dict[str, Any],
         start_time: datetime
     ) -> SearchMetadata:
-        """生成搜索元数据"""
+        """Generate search metadata"""
         execution_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
         
         return SearchMetadata(
@@ -124,19 +119,17 @@ class DataProcessor:
         )
     
     def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:
-        """解析日期字符串"""
+        """Parse date string"""
         if not date_str:
             return None
         
         try:
-            # 尝试多种日期格式
             for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"]:
                 try:
                     return datetime.strptime(date_str, fmt)
                 except ValueError:
                     continue
             
-            # 如果都失败，尝试ISO格式
             return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
         except Exception as e:
             logger.warning("Failed to parse date", date_str=date_str, error=str(e))

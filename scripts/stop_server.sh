@@ -2,19 +2,19 @@
 
 echo "Stopping OpenResearch MCP Server..."
 
-# 查找并停止进程
+# Find and stop process
 PID=$(pgrep -f "python.*src/main.py")
 
 if [ -n "$PID" ]; then
     echo "Found server process with PID: $PID"
     
-    # 发送 TERM 信号
+    # Send TERM signal
     kill -TERM $PID
     
-    # 等待进程结束
+    # Wait for process to end
     sleep 2
     
-    # 检查进程是否还在运行
+    # Check if process is still running
     if kill -0 $PID 2>/dev/null; then
         echo "Process still running, force killing..."
         kill -KILL $PID
